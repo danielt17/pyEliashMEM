@@ -6,6 +6,7 @@ enables:
     enb_all_plots: true
     enb_show_plots: true
     enb_momentum_energy_curve: true
+    enb_momentum_energy_curve_with_fit: true
   enb_saves:
     enb_all_saves: true
     enb_save_logs: true
