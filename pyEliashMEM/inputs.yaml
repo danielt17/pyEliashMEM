@@ -10,5 +10,7 @@ enables:
     enb_all_saves: true
     enb_save_logs: true
     enb_save_figures: true
-  enb_estimation: true
+  enb_estimations:
+    enb_all_estimations: true
+    enb_estimation_momentum_energy_curve: false
 
