@@ -4,6 +4,7 @@ inputs:
 enables:
   enb_plots:
     enb_all_plots: true
+    enb_show_plots: true
     enb_momentum_energy_curve: true
   enb_saves:
     enb_all_saves: true

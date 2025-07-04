@@ -114,7 +114,7 @@ def read_parameters_in_file(filepath: str) -> dict:
     return parameters_in
 
 
-def read_and_prepare_data() -> (dict, dict, np.array, np.array):
+def read_and_prepare_data() -> (dict, dict, np.array, np.array, str):
     """
         Reads input YAML, Fortran-style parameter file, and raw dispersion data.
 
@@ -133,6 +133,7 @@ def read_and_prepare_data() -> (dict, dict, np.array, np.array):
                   including EF, KF, NDRAW, and OMEGABIN, among others.
                 - eraw (np.ndarray): Energy values (shifted by EF), shape (NDRAW,)
                 - kraw (np.ndarray): Momentum values (shifted by KF), shape (NDRAW,)
+                - output_folder (str): Path for output data
 
         Raises:
             FileNotFoundError: If any of the required files are missing.
@@ -144,4 +145,5 @@ def read_and_prepare_data() -> (dict, dict, np.array, np.array):
     params = read_parameters_in_file(filepath_ini)
     filepath_dispersion = os.path.join(config["inputs"]["input_parameters_folder"], params["DATAIN"])
     eraw, kraw = read_and_shift_dispersion_data(filepath_dispersion, params)
-    return config, params, eraw, kraw
+    output_folder = os.path.join(config["inputs"]["input_parameters_folder"],params["OUTPRX"])
+    return config, params, eraw, kraw, output_folder
