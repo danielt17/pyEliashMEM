@@ -1,3 +1,14 @@
+import yaml
+
+
+def read_inputs(filename: str = "pyEliashMEM\inputs.yaml"):
+
+    with open(filename, 'r') as f:
+        config = yaml.safe_load(f)
+
+    return config["inputs"]
+
+
 def read_parameters_in_file(filepath):
     with open(filepath, 'r') as f:
         lines = [line.strip().split()[0] for line in f if line.strip()]  # read first word of each line
