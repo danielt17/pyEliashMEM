@@ -1,4 +1,5 @@
 inputs:
   input_parameters_folder: pyEliashMEM\examples\Be1010
   input_parameters_file: CONF3.INI
-
+enables:
+  enb_plots: true
