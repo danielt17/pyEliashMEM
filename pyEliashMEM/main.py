@@ -4,7 +4,7 @@ from pyEliashMEM.utils.read_inputs import read_and_prepare_data
 
 
 def main():
-    inputs, params, eraw, kraw = read_and_prepare_data()
+    config, params, eraw, kraw = read_and_prepare_data()
     pass
 
 

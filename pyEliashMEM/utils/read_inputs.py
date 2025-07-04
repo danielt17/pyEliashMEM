@@ -6,26 +6,37 @@ import numpy as np
 
 def read_inputs(filename: str = "pyEliashMEM\inputs.yaml") -> dict:
     """
-        Reads a YAML configuration file and returns the 'inputs' section.
+    Reads a YAML configuration file and returns the full configuration as a dictionary.
 
-        Parameters:
-            filename (str): Path to the YAML file.
+    The YAML file is expected to have the following structure:
 
-        Returns:
-            dict: A dictionary containing input parameters from the 'inputs' section
-                  of the YAML file. Keys typically include:
-                  - 'input_parameters_folder' (str): Path to the folder containing parameter files.
-                  - 'input_parameters_file' (str): Name of the parameter file.
+        inputs:
+          input_parameters_folder: pyEliashMEM\\examples\\Be1010
+          input_parameters_file: CONF3.INI
+        enables:
+          enb_plots:
+            enb_all_plots: true
+            enb_momentum_energy_curve: true
+          enb_estimation: true
 
-        Raises:
-            FileNotFoundError: If the file does not exist.
-            yaml.YAMLError: If the YAML file is invalid.
-            KeyError: If the 'inputs' section is missing.
+    Parameters:
+        filename (str): Path to the YAML configuration file.
+                        Defaults to "pyEliashMEM\\inputs.yaml".
+
+    Returns:
+        dict: A dictionary containing all configuration sections from the YAML file.
+              Example top-level keys:
+                - 'inputs' (dict): Paths to input data and config files.
+                - 'enables' (dict): Feature enable/disable flags.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        yaml.YAMLError: If the YAML file is invalid or malformed.
     """
     with open(filename, 'r') as f:
         config = yaml.safe_load(f)
 
-    return config["inputs"]
+    return config
 
 
 def read_parameters_in_file(filepath: str) -> dict:
@@ -114,7 +125,7 @@ def read_and_prepare_data() -> (dict, dict, np.array, np.array):
 
         Returns:
             tuple:
-                - inputs (dict): Dictionary with general inputs from `input.yaml`,
+                - config (dict): Dictionary with general inputs from `input.yaml`,
                   typically containing:
                     - 'input_parameters_folder' (str)
                     - 'input_parameters_file' (str)
@@ -128,9 +139,9 @@ def read_and_prepare_data() -> (dict, dict, np.array, np.array):
             KeyError: If required keys are missing in the YAML or INI file.
             ValueError: If numerical conversion fails during parsing.
     """
-    inputs = read_inputs()
-    filepath_ini = os.path.join(inputs["input_parameters_folder"], inputs["input_parameters_file"])
+    config = read_inputs()
+    filepath_ini = os.path.join(config["inputs"]["input_parameters_folder"], config["inputs"]["input_parameters_file"])
     params = read_parameters_in_file(filepath_ini)
-    filepath_dispersion = os.path.join(inputs["input_parameters_folder"], params["DATAIN"])
+    filepath_dispersion = os.path.join(config["inputs"]["input_parameters_folder"], params["DATAIN"])
     eraw, kraw = read_and_shift_dispersion_data(filepath_dispersion, params)
-    return inputs, params, eraw, kraw
+    return config, params, eraw, kraw
