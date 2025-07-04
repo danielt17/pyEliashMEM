@@ -2,4 +2,8 @@ inputs:
   input_parameters_folder: pyEliashMEM\examples\Be1010
   input_parameters_file: CONF3.INI
 enables:
-  enb_plots: true
+  enb_plots:
+    enb_all_plots: true
+    enb_momentum_energy_curve: true
+  enb_estimation: true
+
