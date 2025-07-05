@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Tuple
+from pyEliashMEM.utils.params import Constants
 
 
 def model_constraint(KT: np.float64, Y: np.array, K: np.array, D: np.array, SIGMA: np.array, OMEGABIN: list,
@@ -89,10 +90,10 @@ def model_constraint(KT: np.float64, Y: np.array, K: np.array, D: np.array, SIGM
         below_d = Y1[:NA] <= OMEGAD
         between_d_m = (Y1[:NA] > OMEGAD) & (Y1[:NA] <= OMEGAM)
 
-        M[:NA] = 0.0
+        M[:NA] = Constants.ZERO
         M[:NA][below_d] = LAMBDA0 * (Y1[:NA][below_d] / OMEGAD) ** 2
         M[:NA][between_d_m] = LAMBDA0
-        M[:NA] = np.maximum(M[:NA], 0.0)  # Enforce non-negativity
+        M[:NA] = np.maximum(M[:NA], Constants.ZERO)  # Enforce non-negativity
 
     # Compute X1, X2, X12
     inv_sigma2 = 1.0 / (SIGMA[:ND] ** 2)
