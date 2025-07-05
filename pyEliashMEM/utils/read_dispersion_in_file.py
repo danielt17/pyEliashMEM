@@ -1,7 +1,7 @@
 import numpy as np
+from typing import Tuple
 
-
-def read_dispersion_data(filename: str) -> (np.array, np.array):
+def read_dispersion_data(filename: str) -> Tuple[np.array, np.array]:
     """
         Reads raw dispersion data from a text file.
 
@@ -26,7 +26,7 @@ def read_dispersion_data(filename: str) -> (np.array, np.array):
     return eraw, kraw
 
 
-def shift_dispersion_data(eraw: np.array, kraw: np.array, params: dict) -> (np.array, np.array):
+def shift_dispersion_data(eraw: np.array, kraw: np.array, params: dict) -> Tuple[np.array, np.array]:
     """
     Applies energy and momentum shifts to the raw dispersion data using EF and KF.
 
@@ -53,7 +53,7 @@ def shift_dispersion_data(eraw: np.array, kraw: np.array, params: dict) -> (np.a
     return eraw_shifted, kraw_shifted
 
 
-def read_and_shift_dispersion_data(filename: str, params: dict) -> (np.array, np.array):
+def read_and_shift_dispersion_data(filename: str, params: dict) -> Tuple[np.array, np.array]:
     """
         Reads raw dispersion data from a file and applies EF/KF shifts.
 
