@@ -31,6 +31,7 @@ def fit_predict_momentum_energy_curve(eraw: np.array,
     Returns:
         tuple:
             - predicted_curve (np.ndarray): Estimated energy values over all kraw (full prediction).
+            - ND (np.int64): total number of elements post calculation.
             - Y (np.ndarray): Filtered energy values (within cutoff and < 0).
             - D (np.ndarray): Residuals between Y and predicted values at same points.
             - K (np.ndarray): Filtered momentum values corresponding to Y.
@@ -47,9 +48,78 @@ def fit_predict_momentum_energy_curve(eraw: np.array,
         A1 = params["A1"]
         A2 = params["A2"]
     mask = (np.abs(eraw) <= params["ECUTOFF"]) & (eraw < 0)
+    ND = np.sum(mask)
     Y = eraw[mask]
     K = kraw[mask]
     predicted_curve = A1 * kraw + A2 * kraw ** 2
     # Estimation error
     D = Y - predicted_curve[mask]
-    return predicted_curve, Y, D, K
+    return predicted_curve, ND, Y, D, K
+
+
+def estimate_error(ND: np.int64, E: np.ndarray, D: np.ndarray, params: dict) -> np.ndarray:
+    """
+    Computes the uncertainty (SIGMA) for each data point based on energy and
+    dispersion difference values.
+
+    If `ERRB0` is non-positive, a local second-order polynomial fit is performed
+    in a sliding window to estimate error. If `ERRB0` is positive, a linear
+    error model is used.
+
+    Parameters:
+        ND (np.int64): Number of data points.
+        E (np.ndarray): Energy values of length ND (in eV). Will be negated internally.
+        D (np.ndarray): Dispersion difference values of length ND.
+        params (dict): Dictionary containing at least:
+            - 'ERRB0' (float): Constant component of the error.
+            - 'ERRB1' (float): Linear coefficient for energy-dependent error.
+
+    Returns:
+        np.ndarray: An array of length ND containing estimated uncertainty values (SIGMA)
+                    for each data point.
+
+    Raises:
+        np.linalg.LinAlgError: If a singular matrix is encountered during local fitting.
+
+    Notes:
+        - Uses a sliding window of size NBIN = 9 for local polynomial fitting.
+        - If `ERRB0 == 0.0`, the function assigns a uniform error based on the mean squared
+          error from all valid local fits.
+        - The energy array `E` is internally flipped (multiplied by -1) to match the
+          behavior in the original Fortran implementation.
+    """
+    NBIN = 9
+    SIGMA = np.zeros(ND)
+    E = -E  # Flip the energy axis
+
+    if params["ERRB0"] <= 0.0:
+        for i in range(ND):
+            il = i - NBIN // 2
+            if il < 0:
+                il = 0
+            if il + NBIN > ND:
+                il = ND - NBIN
+
+            QD = D[il:il + NBIN].copy()
+            Q = np.vstack([E[il:il + NBIN] ** k for k in range(3)]).T  # shape (NBIN, 3)
+
+            QTQ = Q.T @ Q
+            QTD = Q.T @ QD
+
+            try:
+                coeffs = np.linalg.solve(QTQ, QTD)
+                residuals = Q @ coeffs - QD
+                SIGMA[i] = np.linalg.norm(residuals) / np.sqrt(NBIN - 3)
+            except np.linalg.LinAlgError:
+                SIGMA[i] = np.nan  # If singular matrix
+
+        sigmabar = np.sqrt(np.mean(SIGMA[~np.isnan(SIGMA)] ** 2))
+
+        if params["ERRB0"] == 0.0:
+            SIGMA[:] = sigmabar
+
+        print(f"SIGMABAR           = {sigmabar:.6g}")
+    else:
+        SIGMA = params["ERRB0"] + params["ERRB1"] * E
+
+    return SIGMA
