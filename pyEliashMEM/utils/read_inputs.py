@@ -2,7 +2,7 @@ import os
 import yaml
 from pyEliashMEM.utils.read_dispersion_in_file import read_and_shift_dispersion_data
 import numpy as np
-
+from typing import Tuple
 
 def read_inputs(filename: str = "pyEliashMEM\inputs.yaml") -> dict:
     """
@@ -114,7 +114,7 @@ def read_parameters_in_file(filepath: str) -> dict:
     return parameters_in
 
 
-def read_and_prepare_data() -> (dict, dict, np.array, np.array, str):
+def read_and_prepare_data() -> Tuple[dict, dict, np.array, np.array, str]:
     """
         Reads input YAML, Fortran-style parameter file, and raw dispersion data.
 
