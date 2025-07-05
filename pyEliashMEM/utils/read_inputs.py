@@ -4,6 +4,7 @@ from pyEliashMEM.utils.read_dispersion_in_file import read_and_shift_dispersion_
 import numpy as np
 from typing import Tuple
 
+
 def read_inputs(filename: str = "pyEliashMEM\inputs.yaml") -> dict:
     """
     Reads a YAML configuration file and returns the full configuration as a dictionary.
