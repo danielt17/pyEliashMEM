@@ -59,61 +59,76 @@ def fit_predict_momentum_energy_curve(eraw: np.array,
 
 def estimate_error(ND: np.int64, E: np.ndarray, D: np.ndarray, params: dict) -> np.ndarray:
     """
-    Computes the uncertainty (SIGMA) for each data point based on energy and
-    dispersion difference values.
+    Estimate the uncertainty (SIGMA) for each data point using either local polynomial
+    fitting or a linear error model.
 
-    If `ERRB0` is non-positive, a local second-order polynomial fit is performed
-    in a sliding window to estimate error. If `ERRB0` is positive, a linear
-    error model is used.
+    If `ERRB0 <= 0`, the function performs a local second-order polynomial fit in a sliding
+    window of size 9 over the data to compute residual-based errors. If `ERRB0 > 0`, it uses
+    a linear model `SIGMA = ERRB0 + ERRB1 * E`.
 
     Parameters:
         ND (np.int64): Number of data points.
-        E (np.ndarray): Energy values of length ND (in eV). Will be negated internally.
-        D (np.ndarray): Dispersion difference values of length ND.
-        params (dict): Dictionary containing at least:
-            - 'ERRB0' (float): Constant component of the error.
-            - 'ERRB1' (float): Linear coefficient for energy-dependent error.
+        E (np.ndarray): Energy values of shape (ND,). Internally flipped in sign.
+        D (np.ndarray): Dispersion difference values of shape (ND,).
+        params (dict): Dictionary containing error model parameters:
+            ERRB0 (float): Constant component of the error.
+            ERRB1 (float): Linear coefficient for energy-dependent error.
 
     Returns:
-        np.ndarray: An array of length ND containing estimated uncertainty values (SIGMA)
-                    for each data point.
+        np.ndarray: Array of shape (ND,) containing estimated uncertainties (SIGMA) for each point.
 
     Raises:
-        np.linalg.LinAlgError: If a singular matrix is encountered during local fitting.
+        np.linalg.LinAlgError: If a singular matrix occurs during local polynomial fitting.
 
     Notes:
-        - Uses a sliding window of size NBIN = 9 for local polynomial fitting.
-        - If `ERRB0 == 0.0`, the function assigns a uniform error based on the mean squared
-          error from all valid local fits.
-        - The energy array `E` is internally flipped (multiplied by -1) to match the
-          behavior in the original Fortran implementation.
+        - Uses a fixed window size of NBIN = 9 for local least-squares fitting.
+        - Energy values are internally negated to match the Fortran implementation logic.
+        - If any least-squares problem is ill-conditioned, SIGMA for that point is set to NaN.
+        - If ERRB0 == 0, all SIGMA values are replaced by the RMS average (SIGMABAR) of successful fits.
     """
     NBIN = 9
+    pad = NBIN // 2
     SIGMA = np.zeros(ND)
-    E = -E  # Flip the energy axis
+    E = -E  # Flip energy axis as per Fortran behavior
 
     if params["ERRB0"] <= 0.0:
+        # Generate all window start indices with clamping at edges
+        il_array = np.clip(np.arange(ND) - pad, 0, ND - NBIN)
+
+        # Create an array of shape (ND, NBIN) containing window indices
+        idx_matrix = il_array[:, None] + np.arange(NBIN)[None, :]  # shape (ND, NBIN)
+
+        # Gather E and D in windowed form (ND, NBIN)
+        E_windows = E[idx_matrix]
+        D_windows = D[idx_matrix]
+
+        # Polynomial design matrix: (ND, NBIN, 3)
+        Q = np.stack([E_windows ** k for k in range(3)], axis=-1)
+
+        # Compute normal equations
+        QT = np.transpose(Q, (0, 2, 1))  # (ND, 3, NBIN)
+        QTQ = QT @ Q  # (ND, 3, 3)
+        QTD = QT @ D_windows[..., None]  # (ND, 3, 1)
+
+        # Solve least squares for each window
+        coeffs = np.empty((ND, 3, 1))
+        failed = np.zeros(ND, dtype=bool)
+
         for i in range(ND):
-            il = i - NBIN // 2
-            if il < 0:
-                il = 0
-            if il + NBIN > ND:
-                il = ND - NBIN
-
-            QD = D[il:il + NBIN].copy()
-            Q = np.vstack([E[il:il + NBIN] ** k for k in range(3)]).T  # shape (NBIN, 3)
-
-            QTQ = Q.T @ Q
-            QTD = Q.T @ QD
-
             try:
-                coeffs = np.linalg.solve(QTQ, QTD)
-                residuals = Q @ coeffs - QD
-                SIGMA[i] = np.linalg.norm(residuals) / np.sqrt(NBIN - 3)
+                coeffs[i] = np.linalg.solve(QTQ[i], QTD[i])
             except np.linalg.LinAlgError:
-                SIGMA[i] = np.nan  # If singular matrix
+                failed[i] = True
 
-        sigmabar = np.sqrt(np.mean(SIGMA[~np.isnan(SIGMA)] ** 2))
+        # Compute residuals
+        fit = np.einsum('ijk,ikl->ijl', Q, coeffs).squeeze(-1)  # (ND, NBIN)
+        residuals = fit - D_windows
+        residual_norm = np.linalg.norm(residuals, axis=1)
+
+        SIGMA[~failed] = residual_norm[~failed] / np.sqrt(NBIN - 3)
+        SIGMA[failed] = np.nan
+
+        sigmabar = np.sqrt(np.nanmean(SIGMA ** 2))
 
         if params["ERRB0"] == 0.0:
             SIGMA[:] = sigmabar
