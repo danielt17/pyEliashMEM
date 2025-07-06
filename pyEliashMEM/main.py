@@ -19,6 +19,7 @@ def main():
         model_constraint(params["KT"], Y, K, D, SIGMA, params["OMEGABIN"], params["NBIN"], params["OMEGAD"],
                      params["OMEGAM"], params["MODEL"], params["NA"], params["LAMBDA0"], ND)
     KERN = setup_kernel(ND, params["NA"], Y, Y1, DY1)
+
     pass
 
 
