@@ -1,8 +1,10 @@
 import numpy as np
+from typing import Tuple
 
-
-def iterative_mem_fit(A1, A2, ND, NA, ITERNUM, METHOD, FITBPD, KERN, D, SIGMA, M, A, DA,
-                      ALPHA, DALPHA, XCHI, EM, Y, K, KT, X1, X2, X12):
+def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBPD: int, KERN: np.array, D: np.array,
+                      SIGMA: np.array, M: np.array, A: np.array, DA: np.array, ALPHA: float, DALPHA: float, XCHI: float,
+                      EM: np.array, Y: np.array, K: np.array, KT: np.float, X1: float, X2: float, X12: float) -> \
+                      Tuple[np.array, np.array, np.array, int]:
     """
     Performs an iterative maximum entropy fitting procedure,
     updating A1 and A2 until convergence or a maximum iteration count is reached.
