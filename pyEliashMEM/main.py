@@ -20,7 +20,9 @@ def main():
         model_constraint(params["KT"], Y, K, D, SIGMA, params["OMEGABIN"], params["NBIN"], params["OMEGAD"],
                      params["OMEGAM"], params["MODEL"], params["NA"], params["LAMBDA0"], ND)
     KERN = setup_kernel(ND, params["NA"], Y, Y1, DY1)
-    #iterative_mem_fit
+    iterative_mem_fit(params["A1"], params["A2"], ND, params["NA"], params["ITERNUM"], params["METHOD"],
+                      params["FITBPD"], KERN, D, SIGMA, M, params["ALPHA"], params["DALPHA"], params["XCHI"], Y,
+                      K, KT, X1, X2, X12)
     pass
 
 
