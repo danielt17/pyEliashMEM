@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Tuple
 from pyEliashMEM.maximum_entropy_method.mem_algos import memfit_cls
+from pyEliashMEM.maximum_entropy_method.mem_utils import setup_ktk
 
 
 def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBPD: int, KERN: np.array, D: np.array,
