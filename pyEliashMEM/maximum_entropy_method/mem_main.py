@@ -1,5 +1,7 @@
 import numpy as np
 from typing import Tuple
+from pyEliashMEM.maximum_entropy_method.mem_algos import memfit_cls
+
 
 def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBPD: int, KERN: np.array, D: np.array,
                       SIGMA: np.array, M: np.array, ALPHA: float, DALPHA: float, XCHI: float,
@@ -66,13 +68,13 @@ def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBP
 
         # Call appropriate MEM fit routine
         if METHOD == 1:
-            memfit_hst(ND, NA, ITERNUM, KERN, D, SIGMA, M, A, DA, ALPHA, XCHI, EM)
+            memfit_hst(ND, NA, ITERNUM, KERN, D, SIGMA, M, ALPHA, XCHI)
         elif METHOD == 2:
-            memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M, A, DA, ALPHA, DALPHA, EM)
+            memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M, ALPHA, DALPHA)
         elif METHOD == 3:
-            memfit_bryan(ND, NA, ITERNUM, KERN, D, SIGMA, M, A, DA, ALPHA, DALPHA, EM)
+            memfit_bryan(ND, NA, ITERNUM, KERN, D, SIGMA, M, ALPHA, DALPHA)
         elif METHOD == 4:
-            memfit_fixalpha(ND, NA, ITERNUM, KERN, D, SIGMA, M, A, DA, ALPHA, DALPHA, EM)
+            memfit_fixalpha(ND, NA, ITERNUM, KERN, D, SIGMA, M, ALPHA, DALPHA)
         else:
             raise ValueError("Unsupported MEM method")
 
