@@ -71,7 +71,7 @@ def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBP
         if METHOD == 1:
             memfit_hst(ND, NA, ITERNUM, KERN, D, SIGMA, M, ALPHA, XCHI)
         elif METHOD == 2:
-            memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M, ALPHA, DALPHA)
+            memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M)
         elif METHOD == 3:
             memfit_bryan(ND, NA, ITERNUM, KERN, D, SIGMA, M, ALPHA, DALPHA)
         elif METHOD == 4:
@@ -105,5 +105,8 @@ def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBP
         D[:] = (A1 * K + A2 * K ** 2) / KT - Y
 
         print(f"Iteration {J}: A1 = {A1:.6g}, A2 = {A2:.6g}")
+
+    A1 = -A1
+    A2 = -A2
 
     return A1, A2, D, J

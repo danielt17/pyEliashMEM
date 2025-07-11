@@ -29,7 +29,7 @@ def setup_ktk(ND: int, KERN: np.ndarray, SIGMA: np.ndarray) -> np.array:
     return KTK
 
 
-def setup_ktd(ND: int, KERN: np.ndarray, D: np.ndarray, SIGMA: np.ndarray) -> None:
+def setup_ktd(ND: int, KERN: np.ndarray, D: np.ndarray, SIGMA: np.ndarray) -> np.array:
     """
     Computes the KTD vector used in maximum entropy fitting:
     KTD = KERN.T @ (D / SIGMA^2)

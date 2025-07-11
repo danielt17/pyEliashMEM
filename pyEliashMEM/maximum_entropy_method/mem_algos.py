@@ -1,7 +1,8 @@
 import numpy as np
+from pyEliashMEM.maximum_entropy_method.mem_utils import setup_ktk, setup_ktd
 
 
-def memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M, A, EM):
+def memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M):
     """
     Performs MEM fitting using the Constrained Least Squares (CLS) method.
 
@@ -43,15 +44,15 @@ def memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M, A, EM):
         - error_matrix
     """
     # Initialize temporary matrices
-    KTK = np.zeros((NA, NA))
-    KTD = np.zeros(NA)
+    #KTK = np.zeros((NA, NA))
+    #KTD = np.zeros(NA)
 
     # Compute KTK and KTD
-    setup_ktk(ND, NA, KERN, SIGMA, KTK)
-    setup_ktd(ND, NA, KERN, D, SIGMA, KTD)
+    KTK = setup_ktk(ND, KERN, SIGMA)
+    KTD = setup_ktd(ND, KERN, D, SIGMA)
 
     # Initialize A with slight perturbation of M
-    A[:] = (1.0 + 1e-6) * M
+    A = (1.0 + 1e-6) * M
 
     DA = 1.0
     DALPHA = 1.0
