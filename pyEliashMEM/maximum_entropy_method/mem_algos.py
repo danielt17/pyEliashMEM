@@ -64,7 +64,6 @@ def memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M):
         DA = skilling_itr(NA, KTK, KTD, M, A, ALPHA)
         ALPHA, DALPHA = alpha_itr(NA, KTK, M, A, ALPHA)
         iteration += 1
-        print(f"ALPHA: {ALPHA}, DALPHA: {DALPHA}")
 
     # Compute error matrix
     error_matrix(NA, KTK, A, ALPHA, EM)

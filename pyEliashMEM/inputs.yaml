@@ -4,13 +4,13 @@ inputs:
 enables:
   enb_plots:
     enb_all_plots: true
-    enb_show_plots: true
+    enb_show_plots: false
     enb_momentum_energy_curve: true
     enb_momentum_energy_curve_with_fit: true
   enb_saves:
     enb_all_saves: true
     enb_save_logs: true
-    enb_save_figures: true
+    enb_save_figures: false
   enb_estimations:
     enb_all_estimations: true
     enb_estimation_momentum_energy_curve: false
