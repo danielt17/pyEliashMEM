@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.linalg import solve, eigh
+from scipy.linalg import eigh
+from typing import Tuple
 
 
 def setup_ktk(ND: int, KERN: np.ndarray, SIGMA: np.ndarray) -> np.array:
@@ -58,7 +59,7 @@ def setup_ktd(ND: int, KERN: np.ndarray, D: np.ndarray, SIGMA: np.ndarray) -> np
     return KTD
 
 
-def skilling_itr(NA, KTK, KTD, M, A, ALPHA) -> np.array:
+def skilling_itr(NA, KTK, KTD, M, A, ALPHA) -> Tuple[np.array, np.array]:
     """
     Python equivalent of Fortran subroutine SKILLING_ITR
     Modifies A in-place and returns DA (norm of update step)
@@ -109,7 +110,7 @@ def skilling_itr(NA, KTK, KTD, M, A, ALPHA) -> np.array:
             Q[j, i] = Q[i, j]
 
     # Solve Q @ V = V (overwrites V)
-    V = solve(Q, V)
+    V = np.linalg.pinv(Q) @ V
 
     # TEMP = linear combination of E[:, i] with coefficients V[i]
     TEMP.fill(0.0)
@@ -127,7 +128,7 @@ def skilling_itr(NA, KTK, KTD, M, A, ALPHA) -> np.array:
     # Update A
     A += ETAMIN * TEMP
 
-    return DA
+    return A, DA
 
 
 def alpha_itr(NA, KTK, M, A, ALPHA):
@@ -153,7 +154,7 @@ def alpha_itr(NA, KTK, M, A, ALPHA):
     AKTKA = KTK * sqrt_A[:, None] * sqrt_A[None, :]
 
     # Compute eigenvalues of AKTKA (symmetric matrix)
-    LAMBDA = eigh(AKTKA, eigvals_only=True)
+    LAMBDA = eigh(AKTKA, eigvals_only=True, turbo=True, check_finite=False, lower=False)
 
     # Compute entropy-related term S
     S = np.sum(A - M - A * np.log(A / M))

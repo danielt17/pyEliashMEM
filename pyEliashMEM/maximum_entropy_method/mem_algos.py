@@ -61,9 +61,11 @@ def memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M):
 
     # Iteratively update A and ALPHA
     while (DA > 1e-8 or DALPHA > 1e-8) and iteration <= ITERNUM:
-        DA = skilling_itr(NA, KTK, KTD, M, A, ALPHA)
+        A, DA = skilling_itr(NA, KTK, KTD, M, A, ALPHA)
         ALPHA, DALPHA = alpha_itr(NA, KTK, M, A, ALPHA)
         iteration += 1
+        print(f"DA: {DA}, ALPHA: {ALPHA}, DALPHA: {DALPHA}")
+        pass
 
     # Compute error matrix
     error_matrix(NA, KTK, A, ALPHA, EM)
