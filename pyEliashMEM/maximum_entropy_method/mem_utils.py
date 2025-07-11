@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import solve, eigh
 
 
 def setup_ktk(ND: int, KERN: np.ndarray, SIGMA: np.ndarray) -> np.array:
@@ -55,3 +56,116 @@ def setup_ktd(ND: int, KERN: np.ndarray, D: np.ndarray, SIGMA: np.ndarray) -> np
     KTD = np.dot(KERN[:ND].T, weighted_D)
 
     return KTD
+
+
+def skilling_itr(NA, KTK, KTD, M, A, ALPHA) -> np.array:
+    """
+    Python equivalent of Fortran subroutine SKILLING_ITR
+    Modifies A in-place and returns DA (norm of update step)
+    """
+    # Initialize arrays
+    E0 = np.zeros((NA, 3), dtype=np.float64)
+    E = np.zeros((NA, 3), dtype=np.float64)
+    TEMP = np.zeros(NA, dtype=np.float64)
+    Q = np.zeros((3, 3), dtype=np.float64)
+    V = np.zeros(3, dtype=np.float64)
+
+    # Compute E0(:, 0) = -log(A / M)
+    E0[:, 0] = -np.log(A / M)
+    NRME1 = np.linalg.norm(E0[:, 0])
+
+    # E0(:, 1) = KTD - KTK @ A
+    E0[:, 1] = KTD.copy()
+    E0[:, 1] -= KTK @ A
+    NRME2 = np.linalg.norm(E0[:, 1])
+
+    # TEMP = -E0(:, 1) + ALPHA * E0(:, 0)
+    TEMP = -E0[:, 1] + ALPHA * E0[:, 0]
+    DA = np.linalg.norm(TEMP)
+
+    # TEMP = (E0[:,0]/NRME1 - E0[:,1]/NRME2) * A
+    TEMP = (E0[:, 0] / NRME1 - E0[:, 1] / NRME2) * A
+
+    # E0(:, 2) = KTK @ TEMP
+    E0[:, 2] = KTK @ TEMP
+
+    # E = A * E0
+    for j in range(3):
+        E[:, j] = A * E0[:, j]
+
+    # TEMP = E0[:,1] - ALPHA * E0[:,0]
+    TEMP = E0[:, 1] - ALPHA * E0[:, 0]
+
+    # V = - dot(TEMP, E[:, j])
+    for j in range(3):
+        V[j] = -np.dot(TEMP, E[:, j])
+
+    # Compute Q matrix
+    for j in range(3):
+        TEMP = ALPHA * E0[:, j]
+        TEMP += KTK @ E[:, j]
+        for i in range(j, 3):
+            Q[i, j] = np.dot(E[:, i], TEMP)
+            Q[j, i] = Q[i, j]
+
+    # Solve Q @ V = V (overwrites V)
+    V = solve(Q, V)
+
+    # TEMP = linear combination of E[:, i] with coefficients V[i]
+    TEMP.fill(0.0)
+    for i in range(3):
+        TEMP += V[i] * E[:, i]
+
+    # Find minimum ETA to keep A positive
+    ETAMIN = 1.0
+    for i in range(NA):
+        if TEMP[i] < 0.0:
+            ETA = -0.5 * A[i] / TEMP[i]
+            if ETA < ETAMIN:
+                ETAMIN = ETA
+
+    # Update A
+    A += ETAMIN * TEMP
+
+    return DA
+
+
+def alpha_itr(NA, KTK, M, A, ALPHA):
+    """
+    Python version of the ALPHA_ITR Fortran subroutine.
+
+    Parameters:
+    - NA     : int
+    - KTK    : (NA, NA) ndarray
+    - M, A   : (NA,) ndarray
+    - ALPHA  : float (initial alpha)
+
+    Returns:
+    - ALPHA  : updated alpha
+    - DALPHA : absolute change in alpha
+    """
+
+    # Store initial ALPHA
+    ALPHA0 = ALPHA
+
+    # Construct AKTKA = sqrt(A) * KTK * sqrt(A)
+    sqrt_A = np.sqrt(A)
+    AKTKA = KTK * sqrt_A[:, None] * sqrt_A[None, :]
+
+    # Compute eigenvalues of AKTKA (symmetric matrix)
+    LAMBDA = eigh(AKTKA, eigvals_only=True)
+
+    # Compute entropy-related term S
+    S = np.sum(A - M - A * np.log(A / M))
+
+    # Iterative Newton update for ALPHA
+    DAL = ALPHA
+    while abs(DAL) > 1e-6 * ALPHA:
+        F = 2.0 * ALPHA * S + np.sum(LAMBDA / (ALPHA + LAMBDA))
+        DF = 2.0 * S - np.sum(LAMBDA / (ALPHA + LAMBDA) ** 2)
+
+        DAL = -0.1 * F / DF
+        ALPHA += DAL
+
+    DALPHA = abs(ALPHA - ALPHA0)
+    return ALPHA, DALPHA
