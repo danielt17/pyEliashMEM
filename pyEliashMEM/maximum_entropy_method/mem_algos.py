@@ -1,5 +1,5 @@
 import numpy as np
-from pyEliashMEM.maximum_entropy_method.mem_utils import setup_ktk, setup_ktd, skilling_itr, alpha_itr
+from pyEliashMEM.maximum_entropy_method.mem_utils import setup_ktk, setup_ktd, skilling_itr, alpha_itr, error_matrix
 
 
 def memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M):
@@ -68,6 +68,6 @@ def memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M):
         pass
 
     # Compute error matrix
-    error_matrix(NA, KTK, A, ALPHA, EM)
+    DDQ, EM = error_matrix(NA, KTK, A, ALPHA)
 
-    return A, DA, ALPHA, DALPHA, EM
+    return A, DA, KERN, SIGMA, ALPHA, DALPHA, EM

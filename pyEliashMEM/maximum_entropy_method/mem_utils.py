@@ -1,7 +1,6 @@
 import numpy as np
-from scipy.linalg import eigh
+from scipy.linalg import eigh, lu_factor, lu_solve
 from typing import Tuple
-
 
 def setup_ktk(ND: int, KERN: np.ndarray, SIGMA: np.ndarray) -> np.array:
     """
@@ -77,7 +76,7 @@ def skilling_itr(NA, KTK, KTD, M, A, ALPHA) -> Tuple[np.array, np.array]:
 
     # E0(:, 1) = KTD - KTK @ A
     E0[:, 1] = KTD.copy()
-    E0[:, 1] -= KTK @ A
+    E0[:, 1] = KTK @ A - E0[:, 1]
     NRME2 = np.linalg.norm(E0[:, 1])
 
     # TEMP = -E0(:, 1) + ALPHA * E0(:, 0)
@@ -170,3 +169,34 @@ def alpha_itr(NA, KTK, M, A, ALPHA):
 
     DALPHA = abs(ALPHA - ALPHA0)
     return ALPHA, DALPHA
+
+
+def error_matrix(NA, KTK, A, ALPHA):
+    """
+    Compute DADA = inv(KTK + diag(ALPHA / A))
+
+    Parameters:
+        NA     (int): Size of matrices
+        KTK    (ndarray): Input square matrix of shape (NA, NA)
+        A      (ndarray): Vector of length NA
+        ALPHA  (float): Scalar regularization parameter
+
+    Returns:
+        DDQ    (ndarray): Regularized matrix
+        DADA   (ndarray): Inverse of DDQ
+    """
+
+    # Step 1: Copy KTK into DDQ
+    DDQ = KTK.copy()
+
+    # Step 2: Modify diagonal of DDQ: DDQ[i, i] += ALPHA / A[i]
+    DDQ[np.diag_indices(NA)] += ALPHA / A
+
+    # Step 3: Initialize DADA to identity matrix
+    DADA = np.eye(NA)
+
+    # Step 4: Solve DDQ * DADA = I using LU decomposition (equivalent to DGESV)
+    lu, piv = lu_factor(DDQ)
+    DADA = lu_solve((lu, piv), DADA)
+
+    return DDQ, DADA

@@ -45,7 +45,7 @@ def setup_kernel(ND: int, NA: int, Y: np.array, Y1: np.array, DY1: np.array) -> 
                 term_num = 8 * Constants.PI2 * (2 * N + 1) * Y[i] * Y1[j]
                 denom1 = (Y[i] - Y1[j]) ** 2 + ((2 * N + 1) ** 2) * Constants.PI2
                 denom2 = (Y[i] + Y1[j]) ** 2 + ((2 * N + 1) ** 2) * Constants.PI2
-                GN = term_num / (denom1 * denom2)
+                GN = term_num / denom1 / denom2
                 G += GN
                 N += 1
             KERN[i, j] = G * DY1
