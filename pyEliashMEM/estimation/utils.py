@@ -51,3 +51,37 @@ def setup_kernel(ND: int, NA: int, Y: np.array, Y1: np.array, DY1: np.array) -> 
             KERN[i, j] = G * DY1
     return KERN
 
+
+def IMSIGMA(NA, Y, AF, Y1, DY1):
+    """
+    Compute IMSIGMA = π * DY1 * sum_i [AF[i] * (F(Y1[i] - Y) + F(Y1[i] + Y) + 2 * NB(Y1[i]))]
+
+    Parameters:
+        NA   (int): Length of input arrays
+        Y    (float): Scalar value
+        AF   (ndarray): Array of weights, shape (NA,)
+        Y1   (ndarray): Array of positions, shape (NA,)
+        DY1  (float): Spacing
+
+    Returns:
+        float: IMSIGMA result
+    """
+    summation = 0.0
+    for i in range(NA):
+        summation += AF[i] * (
+                f(Y1[i] - Y) + f(Y1[i] + Y) + 2.0 * nb(Y1[i])
+        )
+
+    IMSIGMA = np.pi * DY1 * summation
+    return IMSIGMA
+
+
+def f(x):
+    if x >= 0:
+        return np.exp(-x) / (np.exp(-x) + 1.0)
+    else:
+        return 1.0 / (np.exp(x) + 1.0)
+
+
+def nb(x):
+    return np.exp(-x) / (1.0 - np.exp(-x))

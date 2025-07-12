@@ -2,6 +2,12 @@ import numpy as np
 from scipy.linalg import eigh, lu_factor, lu_solve
 from typing import Tuple
 
+
+def calc_score(A: np.array, M: np.array) -> np.array:
+    S = np.sum(A - M + A * np.log(A/M))
+    return S
+
+
 def setup_ktk(ND: int, KERN: np.ndarray, SIGMA: np.ndarray) -> np.array:
     """
     Computes the KTK matrix used in maximum entropy fitting:
@@ -200,3 +206,32 @@ def error_matrix(NA, KTK, A, ALPHA):
     DADA = lu_solve((lu, piv), DADA)
 
     return DDQ, DADA
+
+
+import numpy as np
+
+
+def chi(KERN, D, SIGMA, A):
+    """
+    Compute chi-squared error:
+        chi = sum_i [ ( (KERN @ A - D)[i] )^2 / SIGMA[i]^2 ]
+
+    Parameters:
+        ND     (int): Number of data points
+        NA     (int): Number of coefficients
+        KERN   (ndarray): ND x NA kernel matrix
+        D      (ndarray): ND data vector
+        SIGMA  (ndarray): ND vector of standard deviations
+        A      (ndarray): NA coefficient vector
+
+    Returns:
+        chi2   (float): Chi-squared value
+    """
+
+    # Compute TEMP = KERN @ A - D
+    TEMP = KERN @ A - D
+
+    # Compute chi-squared: sum((TEMP / SIGMA)^2)
+    CHI = np.sum((TEMP / SIGMA) ** 2)
+
+    return CHI

@@ -1,11 +1,13 @@
 # imports
 import os
+import numpy as np
 from pyEliashMEM.utils.read_inputs import read_and_prepare_data
 from pyEliashMEM.plots.plot_momentum_energy_curve import plot_momentum_energy_curve, plot_momentum_energy_curve_with_fit
 from pyEliashMEM.estimation.fit_predict_momentum_energy_curve import fit_predict_momentum_energy_curve, estimate_error
 from pyEliashMEM.estimation.constraints import model_constraint
-from pyEliashMEM.estimation.utils import setup_kernel
+from pyEliashMEM.estimation.utils import setup_kernel, IMSIGMA
 from pyEliashMEM.maximum_entropy_method.mem_main import iterative_mem_fit
+from pyEliashMEM.maximum_entropy_method.mem_utils import chi, calc_score
 
 
 def main():
@@ -25,7 +27,13 @@ def main():
                                                                             params["METHOD"], params["FITBPD"], KERN, D,
                                                                             SIGMA, M, params["ALPHA"], params["DALPHA"],
                                                                             params["XCHI"], Y, K, KT, X1, X2, X12)
-    
+    CHI0 = chi(KERN, D, SIGMA, A)
+    S = calc_score(A, M)
+    Q = CHI0/ 2 - ALPHA * S
+    D1 = KERN @ A
+    IMS = np.empty(ND)
+    for i in range(ND):
+        IMS[i] = IMSIGMA(params["NA"], Y[i], A, Y1, DY1)
     pass
 
 
