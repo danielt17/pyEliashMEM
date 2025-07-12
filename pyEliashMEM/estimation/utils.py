@@ -2,6 +2,17 @@ import numpy as np
 from pyEliashMEM.utils.params import Constants
 
 
+def f(x):
+    if x >= 0:
+        return np.exp(-x) / (np.exp(-x) + 1.0)
+    else:
+        return 1.0 / (np.exp(x) + 1.0)
+
+
+def nb(x):
+    return np.exp(-x) / (1.0 - np.exp(-x))
+
+
 def setup_kernel(ND: int, NA: int, Y: np.array, Y1: np.array, DY1: np.array) -> np.array:
     """
         Computes the kernel matrix KERN of shape (ND, NA) used in further calculations.
@@ -76,12 +87,54 @@ def IMSIGMA(NA, Y, AF, Y1, DY1):
     return IMSIGMA
 
 
-def f(x):
-    if x >= 0:
-        return np.exp(-x) / (np.exp(-x) + 1.0)
-    else:
-        return 1.0 / (np.exp(x) + 1.0)
+def weight(NA, NBIN, OMEGABIN, BETA, A, Y1, DY1, EM):
+    """
+    Compute frequency-bin weighted statistics.
+
+    Parameters:
+        NA       (int): Length of A, Y1
+        NBIN     (int): Number of bins
+        OMEGABIN (ndarray): Bin edges, length NBIN+1
+        BETA     (float): Exponent
+        A        (ndarray): Weights array, shape (NA,)
+        Y1       (ndarray): Support points, shape (NA,)
+        DY1      (float): Spacing
+        EM       (ndarray): Error matrix, shape (NA, NA)
+
+    Returns:
+        EBX  (ndarray): Bin centers, shape (NBIN,)
+        EBY  (ndarray): Weighted sum in bin, shape (NBIN,)
+        EBDX (ndarray): Bin half-widths, shape (NBIN,)
+        EBDY (ndarray): Error estimate in bin, shape (NBIN,)
+    """
+
+    EBX = np.zeros(NBIN)
+    EBY = np.zeros(NBIN)
+    EBDX = np.zeros(NBIN)
+    EBDY = np.zeros(NBIN)
+
+    L = 0
+    while L < NA and Y1[L] < OMEGABIN[0]:
+        L += 1
+
+    for i in range(NBIN):
+        EBX[i] = 0.5 * (OMEGABIN[i+1] + OMEGABIN[i])
+        EBDX[i] = 0.5 * (OMEGABIN[i+1] - OMEGABIN[i])
+
+        L0 = L
+        while L < NA and Y1[L] < OMEGABIN[i+1]:
+            EBY[i] += A[L] * Y1[L]**BETA
+            L += 1
+        L1 = L - 1
+
+        EBY[i] *= DY1
+
+        EBDY_sum = 0.0
+        for j in range(L0, L1 + 1):
+            for k in range(L0, L1 + 1):
+                EBDY_sum += EM[j, k] * (Y1[j] * Y1[k])**BETA
+        EBDY[i] = np.sqrt(EBDY_sum) * DY1
+
+    return EBX, EBY, EBDX, EBDY
 
 
-def nb(x):
-    return np.exp(-x) / (1.0 - np.exp(-x))
