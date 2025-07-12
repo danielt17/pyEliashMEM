@@ -138,3 +138,32 @@ def weight(NA, NBIN, OMEGABIN, BETA, A, Y1, DY1, EM):
     return EBX, EBY, EBDX, EBDY
 
 
+def intavg(NA, A, Y1, DY, EM):
+    """
+    Compute LAMBDA, DLAMBDA, and OMEGALOG from integral averages.
+
+    Parameters:
+        NA      (int): Length of arrays
+        A       (ndarray): Weight array, shape (NA,)
+        Y1      (ndarray): Support array, shape (NA,)
+        DY      (float): Step size
+        EM      (ndarray): Error covariance matrix, shape (NA, NA)
+
+    Returns:
+        LAMBDA     (float): 2 * sum(A / Y1) * DY
+        DLAMBDA    (float): sqrt of propagated uncertainty
+        OMEGALOG   (float): exp(2 * DY / LAMBDA * sum(A / Y1 * log(Y1)))
+    """
+
+    # Compute LAMBDA
+    LAMBDA = 2.0 * DY * np.sum(A / Y1)
+
+    # Compute DLAMBDA
+    Y1_inv = 1.0 / Y1
+    outer_inv = np.outer(Y1_inv, Y1_inv)
+    DLAMBDA = 2.0 * DY * np.sqrt(np.sum(EM * outer_inv))
+
+    # Compute OMEGALOG
+    OMEGALOG = np.exp(2.0 * DY / LAMBDA * np.sum((A / Y1) * np.log(Y1)))
+
+    return LAMBDA, DLAMBDA, OMEGALOG

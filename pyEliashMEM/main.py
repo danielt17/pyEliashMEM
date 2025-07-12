@@ -5,7 +5,7 @@ from pyEliashMEM.utils.read_inputs import read_and_prepare_data
 from pyEliashMEM.plots.plot_momentum_energy_curve import plot_momentum_energy_curve, plot_momentum_energy_curve_with_fit
 from pyEliashMEM.estimation.fit_predict_momentum_energy_curve import fit_predict_momentum_energy_curve, estimate_error
 from pyEliashMEM.estimation.constraints import model_constraint
-from pyEliashMEM.estimation.utils import setup_kernel, IMSIGMA, weight
+from pyEliashMEM.estimation.utils import setup_kernel, IMSIGMA, weight, intavg
 from pyEliashMEM.maximum_entropy_method.mem_main import iterative_mem_fit
 from pyEliashMEM.maximum_entropy_method.mem_utils import chi, calc_score
 
