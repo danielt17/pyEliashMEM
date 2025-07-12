@@ -138,7 +138,7 @@ def weight(NA, NBIN, OMEGABIN, BETA, A, Y1, DY1, EM):
     return EBX, EBY, EBDX, EBDY
 
 
-def intavg(NA, A, Y1, DY, EM):
+def intavg(A, Y1, DY, EM):
     """
     Compute LAMBDA, DLAMBDA, and OMEGALOG from integral averages.
 
