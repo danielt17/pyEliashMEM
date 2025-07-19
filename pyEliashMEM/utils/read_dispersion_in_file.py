@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Tuple
 
-def read_dispersion_data(filename: str) -> Tuple[np.array, np.array]:
+def read_dispersion_data(filename: str, params: dict) -> Tuple[np.array, np.array]:
     """
         Reads raw dispersion data from a text file.
 
@@ -22,7 +22,7 @@ def read_dispersion_data(filename: str) -> Tuple[np.array, np.array]:
             ValueError: If the file format is invalid or cannot be parsed as float values.
     """
     data = np.loadtxt(filename)
-    eraw, kraw = data[:, 0], data[:, 1]
+    eraw, kraw = data[:params["NDRAW"], 0], data[:params["NDRAW"], 1]
     return eraw, kraw
 
 
@@ -78,7 +78,7 @@ def read_and_shift_dispersion_data(filename: str, params: dict) -> Tuple[np.arra
             KeyError: If 'EF' or 'KF' is missing from `params`.
             ValueError: If the data file is malformed or contains non-numeric entries.
     """
-    eraw, kraw = read_dispersion_data(filename)
+    eraw, kraw = read_dispersion_data(filename, params)
     eraw, kraw = shift_dispersion_data(eraw, kraw, params)
     return eraw, kraw
 
