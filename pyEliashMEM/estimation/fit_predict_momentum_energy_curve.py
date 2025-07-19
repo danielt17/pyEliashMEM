@@ -137,4 +137,4 @@ def estimate_error(ND: np.int64, E: np.ndarray, D: np.ndarray, params: dict) -> 
     else:
         SIGMA = params["ERRB0"] + params["ERRB1"] * E
 
-    return SIGMA
+    return SIGMA, E

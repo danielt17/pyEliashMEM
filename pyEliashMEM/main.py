@@ -17,7 +17,7 @@ def main():
     plot_momentum_energy_curve(eraw, kraw, params, config, output_folder)
     predicted_curve, ND, Y, D, K = fit_predict_momentum_energy_curve(eraw, kraw, params, config)
     plot_momentum_energy_curve_with_fit(eraw, kraw, predicted_curve, params, config, output_folder)
-    SIGMA = estimate_error(ND, Y, D, params)
+    SIGMA, Y = estimate_error(ND, Y, D, params)
     KT, Y, D, SIGMA, OMEGABIN, OMEGAD, OMEGAM, Y1, M, DY1, inv_sigma2, Ksq, K4, K3, X1, X2, X12, XX = \
         model_constraint(params["KT"], Y, K, D, SIGMA, params["OMEGABIN"], params["NBIN"], params["OMEGAD"],
                      params["OMEGAM"], params["MODEL"], params["NA"], params["LAMBDA0"], ND)
