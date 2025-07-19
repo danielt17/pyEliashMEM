@@ -22,6 +22,7 @@ def main():
         model_constraint(params["KT"], Y, K, D, SIGMA, params["OMEGABIN"], params["NBIN"], params["OMEGAD"],
                      params["OMEGAM"], params["MODEL"], params["NA"], params["LAMBDA0"], ND)
     KERN = setup_kernel(ND, params["NA"], Y, Y1, DY1)
+
     A1, A2, D, J, A, DA, KERN, SIGMA, ALPHA, DALPHA, EM = iterative_mem_fit(params["A1"], params["A2"], ND,
                                                                             params["NA"], params["ITERNUM"],
                                                                             params["METHOD"], params["FITBPD"], KERN, D,
