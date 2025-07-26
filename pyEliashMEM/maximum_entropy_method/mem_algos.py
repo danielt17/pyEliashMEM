@@ -62,6 +62,8 @@ def memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M):
     # Iteratively update A and ALPHA
     while (DA > 1e-8 or DALPHA > 1e-8) and iteration <= ITERNUM:
         A, DA = skilling_itr(NA, KTK, KTD, M, A, ALPHA)
+        # TODO: werid difference upper diagonal in KTK to fortran from the previues line
+        # TODO: this happens at MEM_ALG.f line 26 output.
         ALPHA, DALPHA = alpha_itr(NA, KTK, M, A, ALPHA)
         iteration += 1
         print(f"DA: {DA}, ALPHA: {ALPHA}, DALPHA: {DALPHA}")
