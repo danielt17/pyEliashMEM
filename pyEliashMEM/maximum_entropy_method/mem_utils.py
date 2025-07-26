@@ -115,7 +115,7 @@ def skilling_itr(NA, KTK, KTD, M, A, ALPHA) -> Tuple[np.array, np.array]:
             Q[j, i] = Q[i, j]
 
     # Solve Q @ V = V (overwrites V)
-    V = np.linalg.pinv(Q) @ V
+    V = np.linalg.solve(Q, V)
 
     # TEMP = linear combination of E[:, i] with coefficients V[i]
     TEMP.fill(0.0)
