@@ -38,15 +38,13 @@ def main():
     EBX, EBY, EBDX, EBDY = weight(params["NA"], params["NBIN"], OMEGABIN, params["BETA"], A, Y1, DY1, EM)
     LAMBDA, DLAMBDA, OMEGALOG = intavg(A, Y1, DY1, EM)
     eraw *= -1.0 / KT
-    KERN = setup_kernel(ND, params["NA"], Y, Y1, DY1)
+    KERN = setup_kernel(params["NDRAW"], params["NA"], eraw, Y1, DY1)
     D1 = KERN @ A
     K = np.zeros(params["NDRAW"])
-    # ND shouldnt be here but ndraw
-    # for i in range(params["NDRAW"]):
-    for i in range(ND):
+    for i in range(params["NDRAW"]):
         E0 = - (eraw[i] + D1[i]) * KT
         denominator = np.abs(A1) + np.sqrt(A1 ** 2 + 4.0 * A2 * E0)
-        K[i] = 2.0 * E0 / denominator * np.sign(-A1)
+        K[i] = 2.0 * E0 / denominator * np.sign(A1)
         IMS = IMSIGMA(params["NA"], eraw[i], A, Y1, DY1)
     pass
 
