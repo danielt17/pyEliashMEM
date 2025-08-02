@@ -9,54 +9,56 @@ def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBP
                       Y: np.array, K: np.array, KT: np.float, X1: float, X2: float, X12: float) -> \
                       Tuple[np.array, np.array, np.array, int]:
     """
-    Performs an iterative maximum entropy fitting procedure,
-    updating A1 and A2 until convergence or a maximum iteration count is reached.
+    Performs iterative optimization of dispersion parameters A1 and A2 using MEM fitting.
 
-    Parameters
-    ----------
-    ND : int
-        Number of data points.
-    NA : int
-        Number of model points.
-    ITERNUM : int
-        Number of internal MEM iterations per fit.
-    METHOD : int
-        MEM method selector (1: HST, 2: CLS, 3: BRYAN, 4: FIXALPHA).
-    FITBPD : int
-        Flag to enable band dispersion fitting.
-    KERN : np.ndarray
-        Kernel matrix of shape (ND, NA).
-    D : np.ndarray
-        Residual dispersion array of shape (ND,).
-    SIGMA : np.ndarray
-        Error bar array of shape (ND,).
-    M : np.ndarray
-        Default model of shape (NA,).
-    A : np.ndarray
-        Output spectral function of shape (NA,).
-    DA : np.ndarray
-        Delta A vector (NA,).
-    ALPHA : float
-        Initial alpha regularization parameter.
-    DALPHA : float
-        Change in alpha for fixed-alpha methods.
-    XCHI : float
-        Target chi-squared value.
-    EM : np.ndarray
-        Temporary working array for MEM.
-    Y : np.ndarray
-        Energy array (ND,).
-    K : np.ndarray
-        Momentum array (ND,).
-    KT : float
-        Rescaled temperature (in eV).
-    X1, X2, X12 : float
-        Precomputed constants for momentum-energy fit.
+    This function refines the coefficients of a quadratic dispersion model through repeated
+    maximum entropy method (MEM) fits. Depending on the specified method, it invokes a
+    different MEM fitting routine and iteratively updates A1 and A2 based on the fit results.
 
-    Returns
-    -------
-    tuple
-        A1, A2, D, and number of outer iterations.
+    The update is guided by minimizing the misfit between the model and observed data,
+    taking into account a prior model and regularization.
+
+    Parameters:
+        A1 (float): Initial guess for linear dispersion coefficient.
+        A2 (float): Initial guess for quadratic dispersion coefficient.
+        ND (int): Number of data points.
+        NA (int): Number of model parameters.
+        ITERNUM (int): Number of iterations for each MEM fit.
+        METHOD (int): Integer specifying the MEM method to use:
+            - 1: HST method
+            - 2: Classic MEM
+            - 3: Bryan's method
+            - 4: Fixed-alpha method
+        FITBPD (int): Flag for whether to iteratively update the dispersion model (1: yes, 0: no).
+        KERN (np.ndarray): Kernel matrix for data transformation.
+        D (np.ndarray): Current data misfit vector (will be updated in-place).
+        SIGMA (np.ndarray): Uncertainty values associated with each data point.
+        M (np.ndarray): Prior model used in MEM fitting.
+        ALPHA (float): Initial regularization coefficient.
+        DALPHA (float): Initial regularization step size.
+        XCHI (float): Target chi-squared value for MEM convergence.
+        Y (np.ndarray): Observed data vector.
+        K (np.ndarray): Momentum values corresponding to each data point.
+        KT (float): Inverse temperature (1 / kT), used in rescaling.
+        X1, X2, X12 (float): Precomputed factors used in linear system update of A1, A2.
+
+    Returns:
+        tuple:
+            - A1 (float): Final optimized linear dispersion coefficient.
+            - A2 (float): Final optimized quadratic dispersion coefficient.
+            - D (np.ndarray): Final data misfit vector.
+            - J (int): Number of iterations performed.
+            - A (np.ndarray): Final solution vector from MEM fit.
+            - DA (np.ndarray): Final uncertainty or change in A.
+            - KERN (np.ndarray): Final kernel matrix (may be updated in MEM).
+            - SIGMA (np.ndarray): Possibly updated uncertainties from MEM.
+            - ALPHA (float): Final regularization coefficient.
+            - DALPHA (float): Final regularization delta.
+            - EM (np.ndarray): Final energy mesh/grid used in MEM fitting.
+
+    Raises:
+        ValueError: If an unsupported MEM method is specified.
+        RuntimeError: If iteration exceeds `max_iter` without convergence (implicit).
     """
     A1 = -A1
     A2 = -A2
@@ -112,7 +114,55 @@ def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBP
     return A1, A2, D, J, A, DA, KERN, SIGMA, ALPHA, DALPHA, EM
 
 
-def score_output(params, KERN, D, SIGMA, A, M, ALPHA, ND, Y, Y1, DY1, OMEGABIN, EM):
+def score_output(params: dict, KERN: np.array, D: np.array, SIGMA: np.array, A: np.array, M: np.array,
+                 ALPHA: np.float64, ND: np.int32, Y: np.float64, Y1: np.array, DY1: np.float64, OMEGABIN: np.array,
+                 EM: np.array) -> Tuple[np.float64, np.float64, np.float64, np.array, np.array, np.array, np.array,
+                                        np.array, np.array, np.float64, np.float64, np.float64]:
+    """
+    Computes key quantities related to spectral fitting and optimization.
+
+    This function performs multiple steps required in spectral model evaluation:
+      1. Calculates the chi-squared-like misfit term (CHI0) using a kernel and other parameters.
+      2. Computes a model score (S) and a regularized objective function (Q).
+      3. Applies the kernel to the model (D1).
+      4. Estimates the imaginary part of the self-energy (IMS) for each data point.
+      5. Calculates weighted error components (EBX, EBY, EBDX, EBDY).
+      6. Computes spectral averages (LAMBDA, DLAMBDA) and the logarithmic omega grid (OMEGALOG).
+
+    Parameters:
+        params (dict): Dictionary of model and solver parameters. Must contain:
+            - 'NA' (int): Number of model coefficients.
+            - 'NBIN' (int): Number of energy bins.
+            - 'BETA' (float): Inverse temperature or regularization parameter.
+        KERN (np.ndarray): Kernel matrix used in the chi computation.
+        D (np.ndarray): Data vector or measurement.
+        SIGMA (np.ndarray): Error or noise vector.
+        A (np.ndarray): Model coefficients.
+        M (np.ndarray): Prior model or reference.
+        ALPHA (float): Regularization coefficient.
+        ND (int): Number of data points.
+        Y (np.ndarray): Data values.
+        Y1 (np.ndarray): Model output corresponding to Y.
+        DY1 (np.ndarray): Uncertainties or errors in Y1.
+        OMEGABIN (np.ndarray): Energy bin grid for spectral averaging.
+        EM (np.ndarray): Energy mesh/grid for spectral integration.
+
+    Returns:
+        tuple:
+            - CHI0 (float): Misfit term from the chi calculation.
+            - S (float): Model score.
+            - Q (float): Regularized objective value.
+            - D1 (np.ndarray): Model transformed by the kernel.
+            - IMS (np.ndarray): Imaginary part of self-energy for each data point.
+            - EBX, EBY, EBDX, EBDY (np.ndarray): Weighted error contributions in X and Y directions.
+            - LAMBDA (float): Weighted average of the spectrum.
+            - DLAMBDA (float): Standard deviation of the spectrum.
+            - OMEGALOG (np.ndarray): Logarithmic energy grid.
+
+    Raises:
+        KeyError: If required keys ('NA', 'NBIN', 'BETA') are missing from `params`.
+        ValueError: If array shapes are inconsistent or inputs are malformed.
+    """
     CHI0 = chi(KERN, D, SIGMA, A)
     S = calc_score(A, M)
     Q = CHI0 / 2 - ALPHA * S
@@ -125,7 +175,42 @@ def score_output(params, KERN, D, SIGMA, A, M, ALPHA, ND, Y, Y1, DY1, OMEGABIN, 
     return CHI0, S, Q, D1, IMS, EBX, EBY, EBDX, EBDY, LAMBDA, DLAMBDA, OMEGALOG
 
 
-def dispersion_output(params, KT, eraw, Y1, DY1, A, A1, A2):
+def dispersion_output(params: dict, KT: np.float64, eraw: np.array, Y1: np.array, DY1: np.float64, A: np.array,
+                      A1: np.float64, A2: np.float64) -> Tuple[np.array, np.array, np.array, np.array, np.float64]:
+    """
+    Processes dispersion data and computes renormalized momentum values.
+
+    This function performs several steps related to electronic dispersion modeling:
+      1. Rescales the raw energy data using the inverse temperature (KT).
+      2. Constructs a kernel matrix based on the rescaled energy and model output.
+      3. Applies the kernel to the model coefficients to obtain the shifted data (D1).
+      4. Computes a renormalized momentum (K) based on a quadratic dispersion relation.
+      5. Estimates the imaginary part of the self-energy (IMS) at each energy point.
+
+    Parameters:
+        params (dict): Dictionary containing model parameters. Must include:
+            - 'NDRAW' (int): Number of dispersion data points.
+            - 'NA' (int): Number of model coefficients.
+        KT (float): Inverse temperature (1 / kT) used to scale energies.
+        eraw (np.ndarray): Raw energy values to be scaled.
+        Y1 (np.ndarray): Model-predicted observable corresponding to each energy.
+        DY1 (np.ndarray): Uncertainties associated with `Y1`.
+        A (np.ndarray): Model coefficient array.
+        A1 (float): Linear coefficient in the dispersion relation.
+        A2 (float): Quadratic coefficient in the dispersion relation.
+
+    Returns:
+        tuple:
+            - eraw (np.ndarray): Rescaled energy values (in units of KT).
+            - KERN (np.ndarray): Kernel matrix constructed from scaled energy and model.
+            - D1 (np.ndarray): Model-transformed energy shift.
+            - K (np.ndarray): Renormalized momentum values.
+            - IMS (float): Imaginary part of self-energy at the last energy point.
+
+    Raises:
+        KeyError: If required keys ('NDRAW', 'NA') are missing from `params`.
+        ValueError: If inputs have incompatible dimensions or invalid types.
+    """
     eraw *= -1.0 / KT
     KERN = setup_kernel(params["NDRAW"], params["NA"], eraw, Y1, DY1)
     D1 = KERN @ A

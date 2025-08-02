@@ -2,50 +2,86 @@ import numpy as np
 from pyEliashMEM.utils.params import Constants
 
 
-def f(x):
+def f(x: np.float64):
+    """
+    Computes the Fermi-Dirac distribution function.
+
+    This function evaluates the occupation probability for fermions at
+    dimensionless energy `x = (E - μ) / kT`, ensuring numerical stability
+    across positive and negative values of `x`.
+
+    Parameters:
+        x (float): Dimensionless energy variable.
+
+    Returns:
+        float: Occupation number according to the Fermi-Dirac distribution.
+
+    Notes:
+        - For `x >= 0`, the function avoids overflow in `exp(x)` by rewriting
+          the expression to use `exp(-x)` instead.
+        - This stable form is particularly useful for large |x| values.
+
+    Raises:
+        OverflowError: If `x` is a large negative number and `exp(x)` overflows
+                       (very rare in practice due to use of safe formulation).
+    """
     if x >= 0:
         return np.exp(-x) / (np.exp(-x) + 1.0)
     else:
         return 1.0 / (np.exp(x) + 1.0)
 
 
-def nb(x):
+def nb(x: np.array):
+    """
+    Computes the Bose-Einstein distribution function.
+
+    This function evaluates the Bose-Einstein occupation number for a given
+    dimensionless energy `x = E / kT`.
+
+    Parameters:
+        x (float or np.ndarray): Dimensionless energy (energy divided by temperature, E / kT).
+
+    Returns:
+        float or np.ndarray: Occupation number according to the Bose-Einstein distribution.
+
+    Raises:
+        ZeroDivisionError: If `x` is exactly zero (division by zero).
+        OverflowError: If `x` is a large negative number, leading to numerical overflow.
+    """
     return np.exp(-x) / (1.0 - np.exp(-x))
 
 
 def setup_kernel(ND: int, NA: int, Y: np.array, Y1: np.array, DY1: np.array) -> np.array:
     """
-        Computes the kernel matrix KERN of shape (ND, NA) used in further calculations.
+    Constructs the kernel matrix for the spectral fitting problem.
 
-        The kernel is calculated by summing terms of an infinite series until convergence,
-        for each pair of points (Y[i], Y1[j]) over the indices i and j.
+    This function builds a kernel `K[i, j]` used to relate model coefficients
+    to observable quantities in the spectral model. Each kernel element is
+    computed via a convergent infinite series involving the input energies `Y`
+    and model grid `Y1`. The summation is truncated adaptively when terms
+    become sufficiently small.
 
-        Parameters
-        ----------
-        ND : int
-            Number of points in Y.
-        NA : int
-            Number of points in Y1.
-        Y : np.ndarray
-            1D array of length ND, containing energy or frequency values.
-        Y1 : np.ndarray
-            1D array of length NA, containing energy or frequency values.
-        DY1 : float
-            Scalar step size related to Y1, used to scale the kernel values.
+    Parameters:
+        ND (int): Number of data points (length of `Y`).
+        NA (int): Number of model coefficients (length of `Y1`).
+        Y (np.ndarray): Observed energy values (length ND).
+        Y1 (np.ndarray): Model energy grid (length NA).
+        DY1 (np.ndarray): Differential element associated with `Y1` grid.
 
-        Returns
-        -------
-        np.ndarray
-            Kernel matrix of shape (ND, NA) computed as per the specified formula.
-            Each element KERN[i, j] corresponds to the sum over N of terms involving
-            Y[i] and Y1[j], scaled by DY1.
+    Returns:
+        np.ndarray: Kernel matrix of shape (ND, NA), where each element is computed as:
+            K[i, j] = sum over N of a rational function involving `Y[i]` and `Y1[j]`.
 
-        Notes
-        -----
-        The series summation for each element terminates when the absolute value of the
-        current term GN is less than 1e-6 times the absolute value of the cumulative sum G,
-        ensuring numerical convergence.
-        """
+    Notes:
+        - The kernel is built using a summation over Matsubara-like terms:
+            G_N ~ Y[i] * Y1[j] / ((Y[i] ± Y1[j])² + [(2N+1)π]²)
+        - The summation stops when the next term becomes smaller than
+          1e-6 times the current total, to ensure convergence.
+
+    Raises:
+        ValueError: If `Y`, `Y1`, or `DY1` have incompatible shapes.
+        AttributeError: If `Constants.PI2` is not defined (must be set to π²).
+    """
     KERN = np.zeros((ND, NA), dtype=np.float64)
     for j in range(NA):
         for i in range(ND):
@@ -65,17 +101,31 @@ def setup_kernel(ND: int, NA: int, Y: np.array, Y1: np.array, DY1: np.array) -> 
 
 def IMSIGMA(NA, Y, AF, Y1, DY1):
     """
-    Compute IMSIGMA = π * DY1 * sum_i [AF[i] * (F(Y1[i] - Y) + F(Y1[i] + Y) + 2 * NB(Y1[i]))]
+    Computes the imaginary part of the self-energy (ImΣ) at a given energy `Y`.
+
+    This function evaluates the spectral broadening or scattering rate using
+    a sum over model coefficients, incorporating contributions from both
+    the Fermi-Dirac and Bose-Einstein distribution functions.
 
     Parameters:
-        NA   (int): Length of input arrays
-        Y    (float): Scalar value
-        AF   (ndarray): Array of weights, shape (NA,)
-        Y1   (ndarray): Array of positions, shape (NA,)
-        DY1  (float): Spacing
+        NA (int): Number of model coefficients.
+        Y (float): Energy at which the imaginary part is evaluated.
+        AF (np.ndarray): Model coefficient array (length NA).
+        Y1 (np.ndarray): Model energy grid (length NA).
+        DY1 (float): Grid spacing of `Y1` (assumed uniform).
 
     Returns:
-        float: IMSIGMA result
+        float: The imaginary part of the self-energy at energy `Y`.
+
+    Notes:
+        - The formula used is:
+            ImΣ(Y) = π * DY1 * Σ_i [ AF[i] * (f(Y1[i] - Y) + f(Y1[i] + Y) + 2 * nb(Y1[i])) ]
+        - `f` is the Fermi-Dirac distribution function.
+        - `nb` is the Bose-Einstein distribution function.
+        - This form ensures proper thermal broadening and detailed balance.
+
+    Raises:
+        ValueError: If the length of `AF` or `Y1` does not match `NA`.
     """
     summation = 0.0
     for i in range(NA):
@@ -89,23 +139,37 @@ def IMSIGMA(NA, Y, AF, Y1, DY1):
 
 def weight(NA, NBIN, OMEGABIN, BETA, A, Y1, DY1, EM):
     """
-    Compute frequency-bin weighted statistics.
+    Computes binned spectral weight and statistical uncertainty measures.
+
+    This function bins a spectral function defined by coefficients `A` over energy grid `Y1`
+    into the bin edges defined by `OMEGABIN`. It calculates both the weighted integral (EBY)
+    and an associated uncertainty (EBDY) in each bin. The binned quantities are raised to the power `BETA`.
 
     Parameters:
-        NA       (int): Length of A, Y1
-        NBIN     (int): Number of bins
-        OMEGABIN (ndarray): Bin edges, length NBIN+1
-        BETA     (float): Exponent
-        A        (ndarray): Weights array, shape (NA,)
-        Y1       (ndarray): Support points, shape (NA,)
-        DY1      (float): Spacing
-        EM       (ndarray): Error matrix, shape (NA, NA)
+        NA (int): Number of spectral coefficients.
+        NBIN (int): Number of output bins (must satisfy len(OMEGABIN) == NBIN + 1).
+        OMEGABIN (np.ndarray): Bin edges for energy (length NBIN + 1).
+        BETA (float): Power used in weighting (`Y1^BETA`).
+        A (np.ndarray): Spectral weight coefficients (length NA).
+        Y1 (np.ndarray): Energy grid corresponding to `A` (length NA).
+        DY1 (float): Spacing between grid points in `Y1`.
+        EM (np.ndarray): Covariance matrix of the spectral coefficients (NA × NA).
 
     Returns:
-        EBX  (ndarray): Bin centers, shape (NBIN,)
-        EBY  (ndarray): Weighted sum in bin, shape (NBIN,)
-        EBDX (ndarray): Bin half-widths, shape (NBIN,)
-        EBDY (ndarray): Error estimate in bin, shape (NBIN,)
+        tuple:
+            - EBX (np.ndarray): Bin centers (length NBIN).
+            - EBY (np.ndarray): Binned and weighted spectral sum over each bin (length NBIN).
+            - EBDX (np.ndarray): Half-widths of each bin (length NBIN).
+            - EBDY (np.ndarray): Estimated uncertainty in each bin (length NBIN).
+
+    Raises:
+        ValueError: If array shapes are inconsistent, or `OMEGABIN` length != NBIN + 1.
+
+    Notes:
+        - The bin center is computed as: EBX[i] = 0.5 * (OMEGABIN[i+1] + OMEGABIN[i])
+        - The integral in each bin is: EBY[i] = DY1 * Σ_j A[j] * Y1[j]^BETA
+        - The uncertainty is estimated using the covariance matrix:
+            EBDY[i] = sqrt(DY1^2 * Σ_{j,k in bin} EM[j,k] * (Y1[j]Y1[k])^BETA)
     """
 
     EBX = np.zeros(NBIN)
@@ -140,19 +204,35 @@ def weight(NA, NBIN, OMEGABIN, BETA, A, Y1, DY1, EM):
 
 def intavg(A, Y1, DY, EM):
     """
-    Compute LAMBDA, DLAMBDA, and OMEGALOG from integral averages.
+    Computes average spectral quantities: mean inverse energy, its uncertainty, and a logarithmic mean.
+
+    This function evaluates integrated spectral averages using model weights `A`, the energy grid `Y1`,
+    and the covariance matrix `EM`. It returns:
+      1. `LAMBDA`: A weighted mean inverse energy.
+      2. `DLAMBDA`: The uncertainty in `LAMBDA` using the error matrix `EM`.
+      3. `OMEGALOG`: A logarithmic energy average derived from the distribution of `A`.
 
     Parameters:
-        NA      (int): Length of arrays
-        A       (ndarray): Weight array, shape (NA,)
-        Y1      (ndarray): Support array, shape (NA,)
-        DY      (float): Step size
-        EM      (ndarray): Error covariance matrix, shape (NA, NA)
+        A (np.ndarray): Spectral weights (length NA).
+        Y1 (np.ndarray): Energy grid (length NA).
+        DY (float): Energy grid spacing.
+        EM (np.ndarray): Covariance matrix of the weights (shape NA × NA).
 
     Returns:
-        LAMBDA     (float): 2 * sum(A / Y1) * DY
-        DLAMBDA    (float): sqrt of propagated uncertainty
-        OMEGALOG   (float): exp(2 * DY / LAMBDA * sum(A / Y1 * log(Y1)))
+        tuple:
+            - LAMBDA (float): Weighted mean inverse energy: LAMBDA = 2·DY·Σ (A / Y1)
+            - DLAMBDA (float): Uncertainty in `LAMBDA`, estimated from `EM`.
+            - OMEGALOG (float): Logarithmic spectral mean based on weighting A/Y1.
+
+    Raises:
+        ValueError: If `A`, `Y1`, or `EM` have incompatible shapes.
+        ZeroDivisionError: If any entry in `Y1` is zero (division by zero).
+        RuntimeWarning: If `Y1` contains negative or zero values leading to invalid logs.
+
+    Notes:
+        - The quantity `OMEGALOG` is calculated via:
+              OMEGALOG = exp[(2·DY / LAMBDA) * Σ (A / Y1) * log(Y1)]
+        - This is useful in MEM-like spectral reconstructions to characterize distribution centroids.
     """
 
     # Compute LAMBDA

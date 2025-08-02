@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Tuple
 
+
 def fit_predict_momentum_energy_curve(eraw: np.array,
                                       kraw: np.array,
                                       params: dict,
