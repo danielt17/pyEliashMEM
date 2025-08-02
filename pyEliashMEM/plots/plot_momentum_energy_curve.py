@@ -20,6 +20,7 @@ plt.rcParams.update({
 })
 plt.rcParams['text.usetex'] = False
 
+
 def plot_momentum_energy_curve(eraw: np.array, kraw: np.array, params: dict, config: dict, output_folder: str) -> None:
     """
         Plots the momentum-energy curve from raw dispersion data and saves/displays it
