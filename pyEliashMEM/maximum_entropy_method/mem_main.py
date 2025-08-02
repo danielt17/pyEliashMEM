@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Tuple
 from pyEliashMEM.maximum_entropy_method.mem_algos import memfit_cls
-from pyEliashMEM.maximum_entropy_method.mem_utils import setup_ktk
-
+from pyEliashMEM.maximum_entropy_method.mem_utils import setup_ktk, chi, calc_score
+from pyEliashMEM.estimation.utils import setup_kernel, IMSIGMA, weight, intavg
 
 def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBPD: int, KERN: np.array, D: np.array,
                       SIGMA: np.array, M: np.array, ALPHA: float, DALPHA: float, XCHI: float,
@@ -110,3 +110,29 @@ def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBP
     A2 = -A2
 
     return A1, A2, D, J, A, DA, KERN, SIGMA, ALPHA, DALPHA, EM
+
+
+def score_output(params, KERN, D, SIGMA, A, M, ALPHA, ND, Y, Y1, DY1, OMEGABIN, EM):
+    CHI0 = chi(KERN, D, SIGMA, A)
+    S = calc_score(A, M)
+    Q = CHI0 / 2 - ALPHA * S
+    D1 = KERN @ A
+    IMS = np.empty(ND)
+    for i in range(ND):
+        IMS[i] = IMSIGMA(params["NA"], Y[i], A, Y1, DY1)
+    EBX, EBY, EBDX, EBDY = weight(params["NA"], params["NBIN"], OMEGABIN, params["BETA"], A, Y1, DY1, EM)
+    LAMBDA, DLAMBDA, OMEGALOG = intavg(A, Y1, DY1, EM)
+    return CHI0, S, Q, D1, IMS, EBX, EBY, EBDX, EBDY, LAMBDA, DLAMBDA, OMEGALOG
+
+
+def dispersion_output(params, KT, eraw, Y1, DY1, A, A1, A2):
+    eraw *= -1.0 / KT
+    KERN = setup_kernel(params["NDRAW"], params["NA"], eraw, Y1, DY1)
+    D1 = KERN @ A
+    K = np.zeros(params["NDRAW"])
+    for i in range(params["NDRAW"]):
+        E0 = - (eraw[i] + D1[i]) * KT
+        denominator = np.abs(A1) + np.sqrt(A1 ** 2 + 4.0 * A2 * E0)
+        K[i] = 2.0 * E0 / denominator * np.sign(A1)
+        IMS = IMSIGMA(params["NA"], eraw[i], A, Y1, DY1)
+    return eraw, KERN, D1, K, IMS

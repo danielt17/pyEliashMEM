@@ -43,9 +43,6 @@ def memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M):
         - alpha_itr
         - error_matrix
     """
-    # Initialize temporary matrices
-    #KTK = np.zeros((NA, NA))
-    #KTD = np.zeros(NA)
 
     # Compute KTK and KTD
     KTK = setup_ktk(ND, KERN, SIGMA)
@@ -65,7 +62,6 @@ def memfit_cls(ND, NA, ITERNUM, KERN, D, SIGMA, M):
         ALPHA, DALPHA = alpha_itr(NA, KTK, M, A, ALPHA)
         iteration += 1
         print(f"DA: {DA}, ALPHA: {ALPHA}, DALPHA: {DALPHA}")
-        pass
 
     # Compute error matrix
     DDQ, EM = error_matrix(NA, KTK, A, ALPHA)
