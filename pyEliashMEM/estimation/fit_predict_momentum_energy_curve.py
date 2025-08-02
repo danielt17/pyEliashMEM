@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Tuple
 
+
 def fit_predict_momentum_energy_curve(eraw: np.array,
                                       kraw: np.array,
                                       params: dict,
@@ -57,7 +58,7 @@ def fit_predict_momentum_energy_curve(eraw: np.array,
     return predicted_curve, ND, Y, D, K
 
 
-def estimate_error(ND: np.int64, E: np.ndarray, D: np.ndarray, params: dict) -> np.ndarray:
+def estimate_error(ND: np.int32, E: np.ndarray, D: np.ndarray, params: dict) -> Tuple[np.ndarray, np.ndarray]:
     """
     Estimate the uncertainty (SIGMA) for each data point using either local polynomial
     fitting or a linear error model.

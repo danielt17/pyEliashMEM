@@ -4,28 +4,56 @@ from typing import Tuple
 
 
 def calc_score(A: np.array, M: np.array) -> np.array:
+    """
+    Computes the entropy-based score (relative entropy or Kullback–Leibler divergence) between model and prior.
+
+    This function calculates a score that quantifies the divergence between the current model `A` and a prior model `M`,
+    commonly used in maximum entropy methods (MEM). The expression used is:
+
+        S = Σ [ A - M + A · log(A / M) ]
+
+    Parameters:
+        A (np.ndarray): Current model coefficients (length NA).
+        M (np.ndarray): Prior model coefficients (same shape as `A`).
+
+    Returns:
+        float: Entropy-based score measuring the deviation from the prior.
+
+    Raises:
+        ValueError: If `A` and `M` have different shapes.
+        FloatingPointError: If `A` or `M` contains zeros or negative values (log or divide-by-zero).
+
+    Notes:
+        - This is equivalent to the negative of the Kullback–Leibler divergence between `M` and `A` (up to constants).
+        - Used in MEM to balance fit quality with adherence to prior information.
+    """
     S = np.sum(A - M + A * np.log(A/M))
     return S
 
 
 def setup_ktk(ND: int, KERN: np.ndarray, SIGMA: np.ndarray) -> np.array:
     """
-    Computes the KTK matrix used in maximum entropy fitting:
-    KTK = KERN.T @ diag(1/SIGMA**2) @ KERN
+    Computes the weighted kernel matrix product Kᵀ W K for spectral fitting.
 
-    Parameters
-    ----------
-    ND : int
-        Number of data points.
-    NA : int
-        Number of spectral/momentum points.
-    KERN : np.ndarray of shape (ND, NA)
-        Kernel matrix.
-    SIGMA : np.ndarray of shape (ND,)
-        Standard deviations of the measurements.
-    KTK : np.ndarray of shape (NA, NA)
-        Output: matrix to store the result K^T W K.
-        Modified in place.
+    This function calculates the matrix product of the transpose of the kernel matrix `KERN`
+    with itself, weighted by the inverse variance from `SIGMA`. This is a key step in
+    constructing the normal equations for weighted least squares or MEM fitting.
+
+    Parameters:
+        ND (int): Number of data points to consider (rows of `KERN` and length of `SIGMA`).
+        KERN (np.ndarray): Kernel matrix of shape (ND, NA).
+        SIGMA (np.ndarray): Standard deviations (uncertainties) associated with each data point (length ≥ ND).
+
+    Returns:
+        np.ndarray: The weighted kernel product matrix `Kᵀ W K` of shape (NA, NA).
+
+    Raises:
+        ValueError: If dimensions of `KERN` or `SIGMA` are incompatible with `ND`.
+        ZeroDivisionError: If any value in `SIGMA[:ND]` is zero (division by zero).
+
+    Notes:
+        - Weight matrix `W` is diagonal with elements `1 / SIGMA[i]^2`.
+        - This weighted product is essential in MEM and other weighted fitting techniques.
     """
     inv_sigma2 = 1.0 / SIGMA[:ND] ** 2  # (ND,)
     weighted_KERN = KERN[:ND, :] * inv_sigma2[:, np.newaxis]  # shape (ND, NA)
@@ -38,24 +66,27 @@ def setup_ktk(ND: int, KERN: np.ndarray, SIGMA: np.ndarray) -> np.array:
 
 def setup_ktd(ND: int, KERN: np.ndarray, D: np.ndarray, SIGMA: np.ndarray) -> np.array:
     """
-    Computes the KTD vector used in maximum entropy fitting:
-    KTD = KERN.T @ (D / SIGMA^2)
+    Computes the weighted kernel matrix product Kᵀ W K for spectral fitting.
 
-    Parameters
-    ----------
-    ND : int
-        Number of data points.
-    NA : int
-        Number of spectral/momentum points.
-    KERN : np.ndarray of shape (ND, NA)
-        Kernel matrix.
-    D : np.ndarray of shape (ND,)
-        Data residual vector.
-    SIGMA : np.ndarray of shape (ND,)
-        Standard deviations of the measurements.
-    KTD : np.ndarray of shape (NA,)
-        Output: vector to store the result K^T W D.
-        Modified in place.
+    This function calculates the matrix product of the transpose of the kernel matrix `KERN`
+    with itself, weighted by the inverse variance from `SIGMA`. This is a key step in
+    constructing the normal equations for weighted least squares or MEM fitting.
+
+    Parameters:
+        ND (int): Number of data points to consider (rows of `KERN` and length of `SIGMA`).
+        KERN (np.ndarray): Kernel matrix of shape (ND, NA).
+        SIGMA (np.ndarray): Standard deviations (uncertainties) associated with each data point (length ≥ ND).
+
+    Returns:
+        np.ndarray: The weighted kernel product matrix `Kᵀ W K` of shape (NA, NA).
+
+    Raises:
+        ValueError: If dimensions of `KERN` or `SIGMA` are incompatible with `ND`.
+        ZeroDivisionError: If any value in `SIGMA[:ND]` is zero (division by zero).
+
+    Notes:
+        - Weight matrix `W` is diagonal with elements `1 / SIGMA[i]^2`.
+        - This weighted product is essential in MEM and other weighted fitting techniques.
     """
     inv_sigma2 = 1.0 / SIGMA[:ND]**2  # (ND,)
     weighted_D = D[:ND] * inv_sigma2  # (ND,)
@@ -66,8 +97,37 @@ def setup_ktd(ND: int, KERN: np.ndarray, D: np.ndarray, SIGMA: np.ndarray) -> np
 
 def skilling_itr(NA, KTK, KTD, M, A, ALPHA) -> Tuple[np.array, np.array]:
     """
-    Python equivalent of Fortran subroutine SKILLING_ITR
-    Modifies A in-place and returns DA (norm of update step)
+    Performs one iteration of Skilling’s algorithm for maximum entropy model update.
+
+    This function updates the model vector `A` by solving a constrained quadratic
+    optimization problem that balances fitting the data (`KTD`, `KTK`) and
+    maintaining closeness to the prior `M`, regulated by `ALPHA`.
+
+    The update uses an expansion in a 3-dimensional subspace defined by entropy
+    gradients and residuals, solving a small linear system for optimal step size
+    while ensuring positivity of `A`.
+
+    Parameters:
+        NA (int): Number of model parameters.
+        KTK (np.ndarray): Kernel matrix product `Kᵀ W K` (shape NA × NA).
+        KTD (np.ndarray): Kernel-data product `Kᵀ W D` (length NA).
+        M (np.ndarray): Prior model vector (length NA).
+        A (np.ndarray): Current model estimate (length NA).
+        ALPHA (float): Regularization parameter controlling entropy strength.
+
+    Returns:
+        tuple:
+            - A (np.ndarray): Updated model vector after this iteration.
+            - DA (float): Norm of the update step, useful as a convergence metric.
+
+    Raises:
+        LinAlgError: If the linear system `Q @ V = V` is singular or ill-conditioned.
+        ValueError: If input arrays have incompatible shapes.
+
+    Notes:
+        - Ensures updated `A` remains positive by limiting step size `ETA`.
+        - Implements a trust-region like step constrained by positivity.
+        - Based on Skilling’s maximum entropy iterative fitting scheme.
     """
     # Initialize arrays
     E0 = np.zeros((NA, 3), dtype=np.float64)
@@ -138,17 +198,32 @@ def skilling_itr(NA, KTK, KTD, M, A, ALPHA) -> Tuple[np.array, np.array]:
 
 def alpha_itr(NA, KTK, M, A, ALPHA):
     """
-    Python version of the ALPHA_ITR Fortran subroutine.
+    Performs an iterative Newton update for the regularization parameter ALPHA in MEM.
+
+    This function updates the entropy regularization parameter `ALPHA` by solving
+    a nonlinear equation derived from the balance between the entropy term and
+    data fit, using eigenvalues of the weighted kernel matrix.
 
     Parameters:
-    - NA     : int
-    - KTK    : (NA, NA) ndarray
-    - M, A   : (NA,) ndarray
-    - ALPHA  : float (initial alpha)
+        NA (int): Number of model parameters.
+        KTK (np.ndarray): Kernel matrix product `Kᵀ W K` (shape NA × NA).
+        M (np.ndarray): Prior model vector (length NA).
+        A (np.ndarray): Current model estimate (length NA).
+        ALPHA (float): Initial guess for the regularization parameter.
 
     Returns:
-    - ALPHA  : updated alpha
-    - DALPHA : absolute change in alpha
+        tuple:
+            - ALPHA (float): Updated regularization parameter after iteration.
+            - DALPHA (float): Absolute change in `ALPHA` during the iteration.
+
+    Raises:
+        LinAlgError: If eigenvalue decomposition fails.
+        RuntimeWarning: If convergence criteria are not met within iteration loop.
+
+    Notes:
+        - Uses eigenvalues of the matrix sqrt(A) * KTK * sqrt(A) for update.
+        - Newton method is damped with a factor of 0.1 for stability.
+        - Iteration stops when relative change in `ALPHA` is less than 1e-6.
     """
 
     # Store initial ALPHA
@@ -179,19 +254,31 @@ def alpha_itr(NA, KTK, M, A, ALPHA):
 
 def error_matrix(NA, KTK, A, ALPHA):
     """
-    Compute DADA = inv(KTK + diag(ALPHA / A))
+    Computes the error matrix for the maximum entropy method via matrix inversion.
+
+    This function constructs and inverts the matrix (Kᵀ W K + ALPHA * diag(1/A)),
+    which combines data fidelity and entropy regularization terms. The inverse
+    matrix provides error estimates for the spectral coefficients.
 
     Parameters:
-        NA     (int): Size of matrices
-        KTK    (ndarray): Input square matrix of shape (NA, NA)
-        A      (ndarray): Vector of length NA
-        ALPHA  (float): Scalar regularization parameter
+        NA (int): Number of model parameters.
+        KTK (np.ndarray): Kernel matrix product `Kᵀ W K` (shape NA × NA).
+        A (np.ndarray): Current model vector (length NA), assumed strictly positive.
+        ALPHA (float): Regularization parameter.
 
     Returns:
-        DDQ    (ndarray): Regularized matrix
-        DADA   (ndarray): Inverse of DDQ
-    """
+        tuple:
+            - DDQ (np.ndarray): Regularized matrix (shape NA × NA) = KTK + ALPHA * diag(1/A).
+            - DADA (np.ndarray): Inverse of `DDQ`, representing the error covariance matrix.
 
+    Raises:
+        LinAlgError: If matrix inversion fails due to singularity or ill-conditioning.
+        ValueError: If any element of `A` is zero or negative (division by zero).
+
+    Notes:
+        - Uses LU decomposition and solve for inversion, analogous to LAPACK DGESV.
+        - The diagonal regularization ensures stability and positivity constraints.
+    """
     # Step 1: Copy KTK into DDQ
     DDQ = KTK.copy()
 
@@ -208,26 +295,26 @@ def error_matrix(NA, KTK, A, ALPHA):
     return DDQ, DADA
 
 
-import numpy as np
-
-
 def chi(KERN, D, SIGMA, A):
     """
-    Compute chi-squared error:
-        chi = sum_i [ ( (KERN @ A - D)[i] )^2 / SIGMA[i]^2 ]
+    Computes the chi-squared statistic measuring the goodness of fit.
+
+    This function calculates the chi-squared value between the model prediction
+    (KERN @ A) and observed data `D`, weighted by the uncertainties `SIGMA`.
 
     Parameters:
-        ND     (int): Number of data points
-        NA     (int): Number of coefficients
-        KERN   (ndarray): ND x NA kernel matrix
-        D      (ndarray): ND data vector
-        SIGMA  (ndarray): ND vector of standard deviations
-        A      (ndarray): NA coefficient vector
+        KERN (np.ndarray): Kernel matrix mapping model to data (shape: data points × model parameters).
+        D (np.ndarray): Observed data vector.
+        SIGMA (np.ndarray): Standard deviations (uncertainties) of the data points.
+        A (np.ndarray): Model coefficients vector.
 
     Returns:
-        chi2   (float): Chi-squared value
-    """
+        float: Chi-squared statistic quantifying weighted squared residuals.
 
+    Raises:
+        ValueError: If shapes of `KERN`, `D`, `SIGMA`, and `A` are incompatible.
+        ZeroDivisionError: If any value in `SIGMA` is zero (division by zero).
+    """
     # Compute TEMP = KERN @ A - D
     TEMP = KERN @ A - D
 
