@@ -13,25 +13,7 @@ from pyEliashMEM.maximum_entropy_method.mem_main import iterative_mem_fit, score
 
 def main():
     dispersion_data_output = DispersionData()
-    config, params, eraw, kraw, output_folder = read_and_prepare_data()
-    dispersion_data_output.input_data = params["DATAIN"]
-    dispersion_data_output.input_model = params["MODEL"]
-    dispersion_data_output.output_file_prefix = params["OUTPRX"]
-    dispersion_data_output.total_data_points = params["NDRAW"]
-    dispersion_data_output.total_omega_points = params["NA"]
-    dispersion_data_output.cutoff_energy = params["ECUTOFF"]
-    dispersion_data_output.temperature = params["KT"]
-    dispersion_data_output.a1 = params["A1"]
-    dispersion_data_output.a2 = params["A2"]
-    dispersion_data_output.ef = params["EF"]
-    dispersion_data_output.kf = params["KF"]
-    if params["ERRB0"] == 0:
-        dispersion_data_output.data_error_bar = "Automatic"
-    else:
-        dispersion_data_output.data_error_bar = "Manual"
-    dispersion_data_output.data_error_bar_value = params["ERRB0"]
-    dispersion_data_output.data_error_bar_slop = params["ERRB1"]
-
+    config, params, eraw, kraw, output_folder, dispersion_data_output = read_and_prepare_data(dispersion_data_output)
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     plot_momentum_energy_curve(eraw, kraw, params, config, output_folder)
