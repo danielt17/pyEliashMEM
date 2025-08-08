@@ -2,6 +2,7 @@ import numpy as np
 from typing import Tuple
 from dataclasses import dataclass
 
+
 def fit_predict_momentum_energy_curve(eraw: np.array,
                                       kraw: np.array,
                                       params: dict,
@@ -63,34 +64,42 @@ def fit_predict_momentum_energy_curve(eraw: np.array,
     return predicted_curve, ND, Y, D, K, dispersion_data_output
 
 
-def estimate_error(ND: np.int32, E: np.ndarray, D: np.ndarray, params: dict) -> Tuple[np.ndarray, np.ndarray]:
+def estimate_error(ND: np.int32, E: np.ndarray, D: np.ndarray, params: dict, dispersion_data_output: dataclass) -> \
+        Tuple[np.ndarray, np.ndarray, dataclass]:
     """
     Estimate the uncertainty (SIGMA) for each data point using either local polynomial
     fitting or a linear error model.
 
-    If `ERRB0 <= 0`, the function performs a local second-order polynomial fit in a sliding
-    window of size 9 over the data to compute residual-based errors. If `ERRB0 > 0`, it uses
-    a linear model `SIGMA = ERRB0 + ERRB1 * E`.
+    Behavior:
+        - If `ERRB0 <= 0`, performs a local second-order polynomial fit in a sliding
+          window of size 9 over the data to compute residual-based uncertainties.
+        - If `ERRB0 > 0`, uses a linear error model: SIGMA = ERRB0 + ERRB1 * E.
 
     Parameters:
-        ND (np.int64): Number of data points.
-        E (np.ndarray): Energy values of shape (ND,). Internally flipped in sign.
-        D (np.ndarray): Dispersion difference values of shape (ND,).
+        ND (int): Number of data points.
+        E (np.ndarray): 1D array of energy values of length ND. Energy values are internally negated.
+        D (np.ndarray): 1D array of dispersion difference values of length ND.
         params (dict): Dictionary containing error model parameters:
-            ERRB0 (float): Constant component of the error.
-            ERRB1 (float): Linear coefficient for energy-dependent error.
+            ERRB0 (float): Constant error offset.
+            ERRB1 (float): Coefficient for energy-dependent error.
+        dispersion_data_output (dataclass): Instance of the output dataclass to update with sigma_bar.
 
     Returns:
-        np.ndarray: Array of shape (ND,) containing estimated uncertainties (SIGMA) for each point.
+        Tuple[np.ndarray, np.ndarray, dataclass]:
+            - SIGMA (np.ndarray): Estimated uncertainties per data point, shape (ND,).
+            - E (np.ndarray): Negated energy array used internally, shape (ND,).
+            - dispersion_data_output (dataclass): Updated dataclass with sigma_bar set to mean(SIGMA).
 
     Raises:
         np.linalg.LinAlgError: If a singular matrix occurs during local polynomial fitting.
 
     Notes:
-        - Uses a fixed window size of NBIN = 9 for local least-squares fitting.
-        - Energy values are internally negated to match the Fortran implementation logic.
-        - If any least-squares problem is ill-conditioned, SIGMA for that point is set to NaN.
-        - If ERRB0 == 0, all SIGMA values are replaced by the RMS average (SIGMABAR) of successful fits.
+        - Uses a fixed window size (NBIN=9) for local polynomial fits.
+        - Energy values are negated internally to match legacy Fortran code behavior.
+        - If any least-squares fit is ill-conditioned, SIGMA for that point is set to NaN.
+        - If ERRB0 == 0, all SIGMA values are replaced by the root mean square average (SIGMABAR)
+          of valid fits.
+        - SIGMA values computed via residual norms normalized by degrees of freedom (NBIN - 3).
     """
     NBIN = 9
     pad = NBIN // 2
@@ -143,4 +152,5 @@ def estimate_error(ND: np.int32, E: np.ndarray, D: np.ndarray, params: dict) -> 
     else:
         SIGMA = params["ERRB0"] + params["ERRB1"] * E
 
-    return SIGMA, E
+    dispersion_data_output.sigma_bar = np.mean(SIGMA)
+    return SIGMA, E, dispersion_data_output

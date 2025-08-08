@@ -15,7 +15,7 @@ class DispersionData:
       - Accommodates both scalar parameters and list-based bin definitions.
       - Separates input/configuration fields from results fields clearly.
 
-    Parameters:
+    Parameters (Input / Configuration):
         input_data (Optional[str]): Path to the input data file (e.g., 'dispersion.txt').
         input_model (Optional[str]): Model type identifier (e.g., 'NONE').
         output_file_prefix (Optional[str]): Prefix for generated output files.
@@ -23,8 +23,8 @@ class DispersionData:
         total_omega_points (Optional[int]): Number of omega points for analysis.
         cutoff_energy (Optional[float]): Energy cutoff value (ECUTOFF) for filtering.
         temperature (Optional[float]): System temperature in Kelvin.
-        a1 (Optional[float]): Linear dispersion coefficient.
-        a2 (Optional[float]): Quadratic dispersion coefficient.
+        a1 (Optional[float]): Linear dispersion coefficient from input.
+        a2 (Optional[float]): Quadratic dispersion coefficient from input.
         ef (Optional[float]): Fermi energy.
         kf (Optional[float]): Fermi momentum.
         data_error_bar (Optional[str]): Data error handling method ('AUTOMATIC' or manual).
@@ -42,12 +42,15 @@ class DispersionData:
         total_out_bins (Optional[int]): Number of output frequency bins.
         out_bin_values (Optional[List[float]]): List of bin boundary values for output bins.
 
-    Results:
+    Parameters (Results):
         nd (Optional[int]): Number of discrete elements or bins after calculation.
         sigma_bar (Optional[float]): Average sigma (σ̄) value from the analysis.
+        a1_est (Optional[float]): Estimated linear dispersion coefficient after fitting.
+        a2_est (Optional[float]): Estimated quadratic dispersion coefficient after fitting.
         chi2 (Optional[float]): Final chi-squared (χ²) fitting metric.
         q (Optional[float]): Goodness-of-fit Q-value (probability).
         alpha (Optional[float]): Best-fit α parameter.
+        dalpha (Optional[float]): Uncertainty in α (Δα).
         lambda_ (Optional[float]): Estimated electron-phonon coupling constant λ.
         d_lambda (Optional[float]): Uncertainty or error in λ (Δλ).
         omega_log (Optional[float]): Logarithmic average phonon frequency ω_log.
@@ -88,9 +91,12 @@ class DispersionData:
     # Results section
     nd: Optional[int] = field(default=None, init=False)
     sigma_bar: Optional[float] = field(default=None, init=False)
+    a1_est: Optional[float] = field(default=None, init=False)
+    a2_est: Optional[float] = field(default=None, init=False)
     chi2: Optional[float] = field(default=None, init=False)
     q: Optional[float] = field(default=None, init=False)
     alpha: Optional[float] = field(default=None, init=False)
+    dalpha: Optional[float] = field(default=None, init=False)
     lambda_: Optional[float] = field(default=None, init=False)
     d_lambda: Optional[float] = field(default=None, init=False)
     omega_log: Optional[float] = field(default=None, init=False)

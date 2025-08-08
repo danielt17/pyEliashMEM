@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Tuple
 
+
 def read_dispersion_data(filename: str, params: dict) -> Tuple[np.array, np.array]:
     """
         Reads raw dispersion data from a text file.

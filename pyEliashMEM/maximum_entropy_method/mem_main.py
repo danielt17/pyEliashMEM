@@ -1,13 +1,16 @@
 import numpy as np
 from typing import Tuple
+from dataclasses import dataclass
 from pyEliashMEM.maximum_entropy_method.mem_algos import memfit_cls
 from pyEliashMEM.maximum_entropy_method.mem_utils import setup_ktk, chi, calc_score
 from pyEliashMEM.estimation.utils import setup_kernel, IMSIGMA, weight, intavg
 
+
 def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBPD: int, KERN: np.array, D: np.array,
                       SIGMA: np.array, M: np.array, ALPHA: float, DALPHA: float, XCHI: float,
-                      Y: np.array, K: np.array, KT: np.float, X1: float, X2: float, X12: float) -> \
-                      Tuple[np.array, np.array, np.array, int]:
+                      Y: np.array, K: np.array, KT: np.float, X1: float, X2: float, X12: float,
+                      dispersion_data_output: dataclass) -> \
+                      Tuple[np.array, np.array, np.array, int, dataclass]:
     """
     Performs iterative optimization of dispersion parameters A1 and A2 using MEM fitting.
 
@@ -111,13 +114,19 @@ def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBP
     A1 = -A1
     A2 = -A2
 
-    return A1, A2, D, J, A, DA, KERN, SIGMA, ALPHA, DALPHA, EM
+    dispersion_data_output.a1_est = A1
+    dispersion_data_output.a2_est = A2
+    dispersion_data_output.dalpha = DALPHA
+
+    return A1, A2, D, J, A, DA, KERN, SIGMA, ALPHA, DALPHA, EM, dispersion_data_output
 
 
 def score_output(params: dict, KERN: np.array, D: np.array, SIGMA: np.array, A: np.array, M: np.array,
                  ALPHA: np.float64, ND: np.int32, Y: np.float64, Y1: np.array, DY1: np.float64, OMEGABIN: np.array,
-                 EM: np.array) -> Tuple[np.float64, np.float64, np.float64, np.array, np.array, np.array, np.array,
-                                        np.array, np.array, np.float64, np.float64, np.float64]:
+                 EM: np.array, dispersion_data_output: dataclass) -> Tuple[np.float64, np.float64, np.float64, np.array,
+                                                                           np.array, np.array, np.array, np.array,
+                                                                           np.array, np.float64, np.float64, np.float64,
+                                                                           dataclass]:
     """
     Computes key quantities related to spectral fitting and optimization.
 
@@ -172,7 +181,15 @@ def score_output(params: dict, KERN: np.array, D: np.array, SIGMA: np.array, A: 
         IMS[i] = IMSIGMA(params["NA"], Y[i], A, Y1, DY1)
     EBX, EBY, EBDX, EBDY = weight(params["NA"], params["NBIN"], OMEGABIN, params["BETA"], A, Y1, DY1, EM)
     LAMBDA, DLAMBDA, OMEGALOG = intavg(A, Y1, DY1, EM)
-    return CHI0, S, Q, D1, IMS, EBX, EBY, EBDX, EBDY, LAMBDA, DLAMBDA, OMEGALOG
+
+    dispersion_data_output.chi2 = CHI0
+    dispersion_data_output.q = Q
+    dispersion_data_output.alpha = ALPHA
+    dispersion_data_output.lambda_ = LAMBDA
+    dispersion_data_output.d_lambda = DLAMBDA
+    dispersion_data_output.omega_log = OMEGALOG
+
+    return CHI0, S, Q, D1, IMS, EBX, EBY, EBDX, EBDY, LAMBDA, DLAMBDA, OMEGALOG, dispersion_data_output
 
 
 def dispersion_output(params: dict, KT: np.float64, eraw: np.array, Y1: np.array, DY1: np.float64, A: np.array,
