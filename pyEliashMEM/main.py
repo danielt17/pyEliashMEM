@@ -1,6 +1,8 @@
 # imports
 import os
-import numpy as np
+import json
+from dataclasses import asdict
+from pyEliashMEM.utils.format_data_output import DispersionData
 from pyEliashMEM.utils.read_inputs import read_and_prepare_data
 from pyEliashMEM.plots.plot_momentum_energy_curve import plot_momentum_energy_curve, plot_momentum_energy_curve_with_fit
 from pyEliashMEM.estimation.fit_predict_momentum_energy_curve import fit_predict_momentum_energy_curve, estimate_error
@@ -10,7 +12,26 @@ from pyEliashMEM.maximum_entropy_method.mem_main import iterative_mem_fit, score
 
 
 def main():
+    dispersion_data_output = DispersionData()
     config, params, eraw, kraw, output_folder = read_and_prepare_data()
+    dispersion_data_output.input_data = params["DATAIN"]
+    dispersion_data_output.input_model = params["MODEL"]
+    dispersion_data_output.output_file_prefix = params["OUTPRX"]
+    dispersion_data_output.total_data_points = params["NDRAW"]
+    dispersion_data_output.total_omega_points = params["NA"]
+    dispersion_data_output.cutoff_energy = params["ECUTOFF"]
+    dispersion_data_output.temperature = params["KT"]
+    dispersion_data_output.a1 = params["A1"]
+    dispersion_data_output.a2 = params["A2"]
+    dispersion_data_output.ef = params["EF"]
+    dispersion_data_output.kf = params["KF"]
+    if params["ERRB0"] == 0:
+        dispersion_data_output.data_error_bar = "Automatic"
+    else:
+        dispersion_data_output.data_error_bar = "Manual"
+    dispersion_data_output.data_error_bar_value = params["ERRB0"]
+    dispersion_data_output.data_error_bar_slop = params["ERRB1"]
+
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     plot_momentum_energy_curve(eraw, kraw, params, config, output_folder)
@@ -29,7 +50,10 @@ def main():
     CHI0, S, Q, D1, IMS, EBX, EBY, EBDX, EBDY, LAMBDA, DLAMBDA, OMEGALOG = \
         score_output(params, KERN, D, SIGMA, A, M, ALPHA, ND, Y, Y1, DY1, OMEGABIN, EM)
     eraw, KERN, D1, K, IMS = dispersion_output(params, KT, eraw, Y1, DY1, A, A1, A2)
-    pass
+
+    log = asdict(dispersion_data_output)
+    with open(os.path.join(output_folder, "log.json"), "w", encoding="utf-8") as f:
+        json.dump(log, f, indent=4)
 
 
 if __name__ == "__main__":
