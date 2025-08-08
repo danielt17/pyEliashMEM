@@ -1,11 +1,12 @@
 import numpy as np
 from typing import Tuple
-
+from dataclasses import dataclass
 
 def fit_predict_momentum_energy_curve(eraw: np.array,
                                       kraw: np.array,
                                       params: dict,
-                                      config: dict
+                                      config: dict,
+                                      dispersion_data_output: dataclass
                                       ) -> Tuple[np.array, np.array, np.array, np.array]:
     """
     Fits and predicts the momentum-energy curve from raw (shifted) data, using
@@ -28,6 +29,7 @@ def fit_predict_momentum_energy_curve(eraw: np.array,
         config (dict): Configuration dictionary with estimation control flags:
             - enables -> enb_estimations -> enb_all_estimations (bool)
             - enables -> enb_estimations -> enb_estimation_momentum_energy_curve (bool)
+        dispersion_data_output (dataclass): data class for logger outputs
 
     Returns:
         tuple:
@@ -36,6 +38,7 @@ def fit_predict_momentum_energy_curve(eraw: np.array,
             - Y (np.ndarray): Filtered energy values (within cutoff and < 0).
             - D (np.ndarray): Residuals between Y and predicted values at same points.
             - K (np.ndarray): Filtered momentum values corresponding to Y.
+            - dispersion_data_output (dataclass): data class for logger outputs
 
     Notes:
         - The estimation is a simple linear regression in the basis [k, k²].
@@ -55,7 +58,9 @@ def fit_predict_momentum_energy_curve(eraw: np.array,
     predicted_curve = A1 * kraw + A2 * kraw ** 2
     # Estimation error
     D = Y - predicted_curve[mask]
-    return predicted_curve, ND, Y, D, K
+    dispersion_data_output.nd = int(ND)
+
+    return predicted_curve, ND, Y, D, K, dispersion_data_output
 
 
 def estimate_error(ND: np.int32, E: np.ndarray, D: np.ndarray, params: dict) -> Tuple[np.ndarray, np.ndarray]:

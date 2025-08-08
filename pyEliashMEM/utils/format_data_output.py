@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Optional, List
+import json
 
 
 @dataclass
@@ -93,4 +94,18 @@ class DispersionData:
     lambda_: Optional[float] = field(default=None, init=False)
     d_lambda: Optional[float] = field(default=None, init=False)
     omega_log: Optional[float] = field(default=None, init=False)
+
+    def log_to_json(self, output_path: str):
+        """
+        Save the current DispersionData instance as a JSON file.
+
+        Args:
+            output_path (str): Path to the output JSON file.
+
+        This method serializes all fields of the dataclass, including configuration
+        and results, into JSON format for easy external use, storage, or debugging.
+        """
+        log = asdict(self)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(log, f, indent=4)
 
