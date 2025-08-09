@@ -5,7 +5,7 @@ from pyEliashMEM.utils.format_data_output import DispersionData
 from pyEliashMEM.utils.read_inputs import read_and_prepare_data
 from pyEliashMEM.plots.plot_momentum_energy_curve import plot_momentum_energy_curve, plot_momentum_energy_curve_with_fit
 from pyEliashMEM.plots.plot_eliashberg_function import plot_eliashberg_function_curve_with_constraint
-from pyEliashMEM.plots.plot_self_energy import plot_self_energy_real_part
+from pyEliashMEM.plots.plot_self_energy import plot_self_energy_real_part, plot_self_energy_imaginary_part
 from pyEliashMEM.estimation.fit_predict_momentum_energy_curve import fit_predict_momentum_energy_curve, estimate_error
 from pyEliashMEM.estimation.constraints import model_constraint
 from pyEliashMEM.estimation.utils import setup_kernel
@@ -48,6 +48,7 @@ def main():
         "calculated imaginary part of self energy[meV]": IMS * KT * 1000
     })
     plot_self_energy_real_part(self_energy, config, output_folder)
+    plot_self_energy_imaginary_part(self_energy, config, output_folder)
     self_energy.to_csv(os.path.join(output_folder, "self_energy.csv"), index=False)
     eraw, KERN, D1, K, IMS, FWHM = dispersion_output(params, KT, eraw, Y1, DY1, A, A1, A2)
     dispersion_fit = pd.DataFrame({

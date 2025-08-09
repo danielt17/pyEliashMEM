@@ -83,3 +83,55 @@ def plot_self_energy_real_part(self_energy: pd.DataFrame, config: dict, output_f
             plt.savefig(os.path.join(output_folder, file_name), dpi=300, bbox_inches='tight')
         if config["enables"]["enb_plots"]["enb_show_plots"]:
             plt.show()
+
+
+def plot_self_energy_imaginary_part(self_energy: pd.DataFrame, config: dict, output_folder: str) -> None:
+    """
+        Plots the momentum-energy curve from raw dispersion data and saves/displays it
+        based on the configuration flags.
+
+        The plot shows energy (shifted by EF) versus momentum (shifted by KF),
+        styled with blue circle markers and no connecting lines.
+
+        Parameters:
+            eraw (np.ndarray): Array of energy values (shifted by EF).
+            kraw (np.ndarray): Array of momentum values (shifted by KF).
+            params (dict): Dictionary of simulation parameters containing at least:
+                - 'EF' (float): Fermi energy in eV.
+                - 'KF' (float): Fermi momentum.
+            config (dict): Configuration dictionary controlling plot enabling and saving.
+                Expected keys:
+                  - enables -> enb_plots -> enb_all_plots (bool)
+                  - enables -> enb_plots -> enb_momentum_energy_curve (bool)
+                  - enables -> enb_saves -> enb_all_saves (bool)
+                  - enables -> enb_saves -> enb_save_figures (bool)
+                  - enables -> enb_plots -> enb_show_plots (bool)
+            output_folder (str): Directory path where plot files are saved.
+
+        Returns:
+            None
+
+        Raises:
+            KeyError: If expected keys are missing from the `config` or `params`.
+            OSError: If saving the plot fails due to invalid output folder.
+    """
+    if config["enables"]["enb_plots"]["enb_all_plots"] and config["enables"]["enb_plots"]["enb_eliashberg_function"]:
+        fig, ax = plt.subplots(figsize=(5, 3.5))
+        ax.plot(-self_energy["omega[meV]"],
+                self_energy["calculated imaginary part of self energy[meV]"],
+                marker="",
+                linestyle="-",
+                markerfacecolor='none',
+                markeredgecolor='blue',
+                markeredgewidth=1.5,
+                color='blue')
+        ax.set_title(
+            rf"Estimated imaginary part of self-energy $Im\mathrm{{\Sigma}} (\mathrm{{\epsilon}})$")
+        ax.set_xlabel(r"$\mathrm{{\epsilon}} - \mathrm{{\epsilon}}_{{F}} [meV]$")
+        ax.set_ylabel(r"$Im\mathrm{{\Sigma}} (\mathrm{{\epsilon}}) [meV]$")
+        ax.grid(True)
+        if config["enables"]["enb_saves"]["enb_all_saves"] and config["enables"]["enb_saves"]["enb_save_figures"]:
+            file_name = "self_energy_imaginary_part.svg"
+            plt.savefig(os.path.join(output_folder, file_name), dpi=300, bbox_inches='tight')
+        if config["enables"]["enb_plots"]["enb_show_plots"]:
+            plt.show()
