@@ -5,7 +5,8 @@ from pyEliashMEM.utils.format_data_output import DispersionData
 from pyEliashMEM.utils.read_inputs import read_and_prepare_data
 from pyEliashMEM.plots.plot_momentum_energy_curve import plot_momentum_energy_curve, plot_momentum_energy_curve_with_fit
 from pyEliashMEM.plots.plot_eliashberg_function import plot_eliashberg_function_curve_with_constraint
-from pyEliashMEM.plots.plot_self_energy import plot_self_energy_real_part, plot_self_energy_imaginary_part
+from pyEliashMEM.plots.plot_self_energy import plot_self_energy_real_part, plot_self_energy_imaginary_part, \
+    plot_real_part_self_energy_and_eliashberg_function
 from pyEliashMEM.estimation.fit_predict_momentum_energy_curve import fit_predict_momentum_energy_curve, estimate_error
 from pyEliashMEM.estimation.constraints import model_constraint
 from pyEliashMEM.estimation.utils import setup_kernel
@@ -37,7 +38,8 @@ def main():
         "constraint function": M
     })
     plot_eliashberg_function_curve_with_constraint(eliashberg_function, config, output_folder)
-    eliashberg_function.to_csv(os.path.join(output_folder, "eliashberg_function.csv"), index=False)
+    if config["enables"]["enb_saves"]["enb_all_saves"] and config["enables"]["enb_saves"]["enb_save_logs"]:
+        eliashberg_function.to_csv(os.path.join(output_folder, "eliashberg_function.csv"), index=False)
     CHI0, S, Q, D1, IMS, EBX, EBY, EBDX, EBDY, LAMBDA, DLAMBDA, OMEGALOG, dispersion_data_output = \
         score_output(params, KERN, D, SIGMA, A, M, ALPHA, ND, Y, Y1, DY1, OMEGABIN, EM, dispersion_data_output)
     self_energy = pd.DataFrame({
@@ -49,7 +51,9 @@ def main():
     })
     plot_self_energy_real_part(self_energy, config, output_folder)
     plot_self_energy_imaginary_part(self_energy, config, output_folder)
-    self_energy.to_csv(os.path.join(output_folder, "self_energy.csv"), index=False)
+    plot_real_part_self_energy_and_eliashberg_function(self_energy, eliashberg_function, config, output_folder)
+    if config["enables"]["enb_saves"]["enb_all_saves"] and config["enables"]["enb_saves"]["enb_save_logs"]:
+        self_energy.to_csv(os.path.join(output_folder, "self_energy.csv"), index=False)
     eraw, KERN, D1, K, IMS, FWHM = dispersion_output(params, KT, eraw, Y1, DY1, A, A1, A2)
     dispersion_fit = pd.DataFrame({
         "omega[eV]": -eraw*KT,
@@ -58,8 +62,9 @@ def main():
         "calculated imaginary part of self energy[eV]": IMS*KT,
         "calculated photoemission peak width(FWHM)": FWHM
     })
-    dispersion_fit.to_csv(os.path.join(output_folder, "dispersion_fit.csv"), index=False)
-    dispersion_data_output.log_to_json(os.path.join(output_folder, "log.json"))
+    if config["enables"]["enb_saves"]["enb_all_saves"] and config["enables"]["enb_saves"]["enb_save_logs"]:
+        dispersion_fit.to_csv(os.path.join(output_folder, "dispersion_fit.csv"), index=False)
+        dispersion_data_output.log_to_json(os.path.join(output_folder, "log.json"))
 
 
 if __name__ == "__main__":
