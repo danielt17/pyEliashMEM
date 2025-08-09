@@ -193,7 +193,8 @@ def score_output(params: dict, KERN: np.array, D: np.array, SIGMA: np.array, A: 
 
 
 def dispersion_output(params: dict, KT: np.float64, eraw: np.array, Y1: np.array, DY1: np.float64, A: np.array,
-                      A1: np.float64, A2: np.float64) -> Tuple[np.array, np.array, np.array, np.array, np.float64]:
+                      A1: np.float64, A2: np.float64) -> Tuple[np.array, np.array, np.array, np.array, np.array,
+                      np.array]:
     """
     Processes dispersion data and computes renormalized momentum values.
 
@@ -222,8 +223,8 @@ def dispersion_output(params: dict, KT: np.float64, eraw: np.array, Y1: np.array
             - KERN (np.ndarray): Kernel matrix constructed from scaled energy and model.
             - D1 (np.ndarray): Model-transformed energy shift.
             - K (np.ndarray): Renormalized momentum values.
-            - IMS (float): Imaginary part of self-energy at the last energy point.
-
+            - IMS (np.array): Imaginary part of self-energy at the last energy point.
+            - FWHM (np.array): photoemission FWHM
     Raises:
         KeyError: If required keys ('NDRAW', 'NA') are missing from `params`.
         ValueError: If inputs have incompatible dimensions or invalid types.
@@ -232,9 +233,12 @@ def dispersion_output(params: dict, KT: np.float64, eraw: np.array, Y1: np.array
     KERN = setup_kernel(params["NDRAW"], params["NA"], eraw, Y1, DY1)
     D1 = KERN @ A
     K = np.zeros(params["NDRAW"])
+    IMS = np.zeros(params["NDRAW"],)
+    FWHM = np.zeros(params["NDRAW"], )
     for i in range(params["NDRAW"]):
         E0 = - (eraw[i] + D1[i]) * KT
         denominator = np.abs(A1) + np.sqrt(A1 ** 2 + 4.0 * A2 * E0)
         K[i] = 2.0 * E0 / denominator * np.sign(A1)
-        IMS = IMSIGMA(params["NA"], eraw[i], A, Y1, DY1)
-    return eraw, KERN, D1, K, IMS
+        IMS[i] = IMSIGMA(params["NA"], eraw[i], A, Y1, DY1)
+        FWHM[i] = 2 * IMS[i] * KT / np.abs(A1+2*A2*K[i])
+    return eraw, KERN, D1, K, IMS, FWHM

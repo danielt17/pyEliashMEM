@@ -1,5 +1,6 @@
 # imports
 import os
+import pandas as pd
 from pyEliashMEM.utils.format_data_output import DispersionData
 from pyEliashMEM.utils.read_inputs import read_and_prepare_data
 from pyEliashMEM.plots.plot_momentum_energy_curve import plot_momentum_energy_curve, plot_momentum_energy_curve_with_fit
@@ -28,11 +29,32 @@ def main():
         iterative_mem_fit(params["A1"], params["A2"], ND, params["NA"], params["ITERNUM"], params["METHOD"],
                           params["FITBPD"], KERN, D, SIGMA, M, params["ALPHA"], params["DALPHA"], params["XCHI"], Y, K,
                           KT, X1, X2, X12, dispersion_data_output)
+    eliashberg_function = pd.DataFrame({
+        "omega[meV]": Y1 * KT * 1000,
+        "Eliashberg function": A,
+        "constraint function": M
+    })
+    eliashberg_function.to_csv(os.path.join(output_folder, "eliashberg_function.csv"), index=False)
     CHI0, S, Q, D1, IMS, EBX, EBY, EBDX, EBDY, LAMBDA, DLAMBDA, OMEGALOG, dispersion_data_output = \
         score_output(params, KERN, D, SIGMA, A, M, ALPHA, ND, Y, Y1, DY1, OMEGABIN, EM, dispersion_data_output)
-    eraw, KERN, D1, K, IMS = dispersion_output(params, KT, eraw, Y1, DY1, A, A1, A2)
+    self_energy = pd.DataFrame({
+        "omega[meV]": Y * KT * 1000,
+        "real part of self energy[meV]": D * KT * 1000,
+        "error bars[meV]": SIGMA * KT * 1000,
+        "fit real part of self energy[meV]": D1 * KT * 1000,
+        "calculated imaginary part of self energy[meV]": IMS * KT * 1000
+    })
+    self_energy.to_csv(os.path.join(output_folder, "self_energy.csv"), index=False)
+    eraw, KERN, D1, K, IMS, FWHM = dispersion_output(params, KT, eraw, Y1, DY1, A, A1, A2)
+    dispersion_fit = pd.DataFrame({
+        "omega[eV]": -eraw*KT,
+        "momentum": kraw,
+        "fit momentum data": K,
+        "calculated imaginary part of self energy[eV]": IMS*KT,
+        "calculated photoemission peak width(FWHM)": FWHM
+    })
+    dispersion_fit.to_csv(os.path.join(output_folder, "dispersion_fit.csv"), index=False)
     dispersion_data_output.log_to_json(os.path.join(output_folder, "log.json"))
-    pass
 
 
 if __name__ == "__main__":
