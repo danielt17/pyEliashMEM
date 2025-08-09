@@ -18,7 +18,7 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["CMU Serif"],
 })
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 
 
 def plot_momentum_energy_curve(eraw: np.array, kraw: np.array, params: dict, config: dict, output_folder: str) -> None:

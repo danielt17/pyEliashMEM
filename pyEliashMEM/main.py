@@ -4,6 +4,7 @@ import pandas as pd
 from pyEliashMEM.utils.format_data_output import DispersionData
 from pyEliashMEM.utils.read_inputs import read_and_prepare_data
 from pyEliashMEM.plots.plot_momentum_energy_curve import plot_momentum_energy_curve, plot_momentum_energy_curve_with_fit
+from pyEliashMEM.plots.plot_eliashberg_function import plot_eliashberg_function_curve_with_constraint
 from pyEliashMEM.estimation.fit_predict_momentum_energy_curve import fit_predict_momentum_energy_curve, estimate_error
 from pyEliashMEM.estimation.constraints import model_constraint
 from pyEliashMEM.estimation.utils import setup_kernel
@@ -34,6 +35,7 @@ def main():
         "Eliashberg function": A,
         "constraint function": M
     })
+    plot_eliashberg_function_curve_with_constraint(eliashberg_function, config, output_folder)
     eliashberg_function.to_csv(os.path.join(output_folder, "eliashberg_function.csv"), index=False)
     CHI0, S, Q, D1, IMS, EBX, EBY, EBDX, EBDY, LAMBDA, DLAMBDA, OMEGALOG, dispersion_data_output = \
         score_output(params, KERN, D, SIGMA, A, M, ALPHA, ND, Y, Y1, DY1, OMEGABIN, EM, dispersion_data_output)
