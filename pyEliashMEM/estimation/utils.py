@@ -244,6 +244,10 @@ def intavg(A, Y1, DY, EM):
     DLAMBDA = 2.0 * DY * np.sqrt(np.sum(EM * outer_inv))
 
     # Compute OMEGALOG
+    # Our OMEGALOG is correct while fortran is wrong! they have a bug in log computation.
+    # specifically np.log(0.3868)=-0.9498475154029978 which is correct in python
+    # but fortran says it is LOG(0.3868)=-2.5726781331127264
+    # so here we have the correct value
     OMEGALOG = np.exp(2.0 * DY / LAMBDA * np.sum((A / Y1) * np.log(Y1)))
 
     return LAMBDA, DLAMBDA, OMEGALOG

@@ -3,6 +3,7 @@ import yaml
 from pyEliashMEM.utils.read_dispersion_in_file import read_and_shift_dispersion_data
 import numpy as np
 from typing import Tuple
+from dataclasses import dataclass
 
 
 def read_inputs(filename: str = "pyEliashMEM\inputs.yaml") -> dict:
@@ -115,7 +116,7 @@ def read_parameters_in_file(filepath: str) -> dict:
     return parameters_in
 
 
-def read_and_prepare_data() -> Tuple[dict, dict, np.array, np.array, str]:
+def read_and_prepare_data(dispersion_data_output: dataclass) -> Tuple[dict, dict, np.array, np.array, str, dataclass]:
     """
         Reads input YAML, Fortran-style parameter file, and raw dispersion data.
 
@@ -135,6 +136,7 @@ def read_and_prepare_data() -> Tuple[dict, dict, np.array, np.array, str]:
                 - eraw (np.ndarray): Energy values (shifted by EF), shape (NDRAW,)
                 - kraw (np.ndarray): Momentum values (shifted by KF), shape (NDRAW,)
                 - output_folder (str): Path for output data
+                - dispersion_data_output (dataclass): logger output format
 
         Raises:
             FileNotFoundError: If any of the required files are missing.
@@ -147,4 +149,38 @@ def read_and_prepare_data() -> Tuple[dict, dict, np.array, np.array, str]:
     filepath_dispersion = os.path.join(config["inputs"]["input_parameters_folder"], params["DATAIN"])
     eraw, kraw = read_and_shift_dispersion_data(filepath_dispersion, params)
     output_folder = os.path.join(config["inputs"]["input_parameters_folder"],params["OUTPRX"])
-    return config, params, eraw, kraw, output_folder
+
+    dispersion_data_output.input_data = params["DATAIN"]
+    dispersion_data_output.input_model = params["MODEL"]
+    dispersion_data_output.output_file_prefix = params["OUTPRX"]
+    dispersion_data_output.total_data_points = params["NDRAW"]
+    dispersion_data_output.total_omega_points = params["NA"]
+    dispersion_data_output.cutoff_energy = params["ECUTOFF"]
+    dispersion_data_output.temperature = params["KT"]
+    dispersion_data_output.a1 = params["A1"]
+    dispersion_data_output.a2 = params["A2"]
+    dispersion_data_output.ef = params["EF"]
+    dispersion_data_output.kf = params["KF"]
+    if params["ERRB0"] == 0:
+        dispersion_data_output.data_error_bar = "Automatic"
+    else:
+        dispersion_data_output.data_error_bar = "Manual"
+    dispersion_data_output.data_error_bar_value = params["ERRB0"]
+    dispersion_data_output.data_error_bar_slop = params["ERRB1"]
+    if params["METHOD"] == 1:
+        dispersion_data_output.mem_method = "Historic"
+    elif params["METHOD"] == 2:
+        dispersion_data_output.mem_method = "Classic"
+    elif params["METHOD"] == 3:
+        dispersion_data_output.mem_method = "Bryan"
+    else:
+        dispersion_data_output.mem_method = "None"
+    dispersion_data_output.max_iteration_num = params["ITERNUM"]
+    if params["MODEL"] == "NONE":
+        dispersion_data_output.def_model_omega_d = params["OMEGAD"]
+        dispersion_data_output.def_model_omega_m = params["OMEGAM"]
+        dispersion_data_output.def_model_lambda0 = params["LAMBDA0"]
+    dispersion_data_output.weight_exponent = params["BETA"]
+    dispersion_data_output.total_out_bins = params["NBIN"]
+    dispersion_data_output.out_bin_values = params["OMEGABIN"]
+    return config, params, eraw, kraw, output_folder, dispersion_data_output

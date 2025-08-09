@@ -1,13 +1,16 @@
 import numpy as np
 from typing import Tuple
+from dataclasses import dataclass
 from pyEliashMEM.maximum_entropy_method.mem_algos import memfit_cls
 from pyEliashMEM.maximum_entropy_method.mem_utils import setup_ktk, chi, calc_score
 from pyEliashMEM.estimation.utils import setup_kernel, IMSIGMA, weight, intavg
 
+
 def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBPD: int, KERN: np.array, D: np.array,
                       SIGMA: np.array, M: np.array, ALPHA: float, DALPHA: float, XCHI: float,
-                      Y: np.array, K: np.array, KT: np.float, X1: float, X2: float, X12: float) -> \
-                      Tuple[np.array, np.array, np.array, int]:
+                      Y: np.array, K: np.array, KT: np.float, X1: float, X2: float, X12: float,
+                      dispersion_data_output: dataclass) -> \
+                      Tuple[np.array, np.array, np.array, int, dataclass]:
     """
     Performs iterative optimization of dispersion parameters A1 and A2 using MEM fitting.
 
@@ -111,13 +114,19 @@ def iterative_mem_fit(A1, A2, ND: int, NA: int, ITERNUM: int, METHOD: int, FITBP
     A1 = -A1
     A2 = -A2
 
-    return A1, A2, D, J, A, DA, KERN, SIGMA, ALPHA, DALPHA, EM
+    dispersion_data_output.a1_est = A1
+    dispersion_data_output.a2_est = A2
+    dispersion_data_output.dalpha = DALPHA
+
+    return A1, A2, D, J, A, DA, KERN, SIGMA, ALPHA, DALPHA, EM, dispersion_data_output
 
 
 def score_output(params: dict, KERN: np.array, D: np.array, SIGMA: np.array, A: np.array, M: np.array,
                  ALPHA: np.float64, ND: np.int32, Y: np.float64, Y1: np.array, DY1: np.float64, OMEGABIN: np.array,
-                 EM: np.array) -> Tuple[np.float64, np.float64, np.float64, np.array, np.array, np.array, np.array,
-                                        np.array, np.array, np.float64, np.float64, np.float64]:
+                 EM: np.array, dispersion_data_output: dataclass) -> Tuple[np.float64, np.float64, np.float64, np.array,
+                                                                           np.array, np.array, np.array, np.array,
+                                                                           np.array, np.float64, np.float64, np.float64,
+                                                                           dataclass]:
     """
     Computes key quantities related to spectral fitting and optimization.
 
@@ -172,11 +181,20 @@ def score_output(params: dict, KERN: np.array, D: np.array, SIGMA: np.array, A: 
         IMS[i] = IMSIGMA(params["NA"], Y[i], A, Y1, DY1)
     EBX, EBY, EBDX, EBDY = weight(params["NA"], params["NBIN"], OMEGABIN, params["BETA"], A, Y1, DY1, EM)
     LAMBDA, DLAMBDA, OMEGALOG = intavg(A, Y1, DY1, EM)
-    return CHI0, S, Q, D1, IMS, EBX, EBY, EBDX, EBDY, LAMBDA, DLAMBDA, OMEGALOG
+
+    dispersion_data_output.chi2 = CHI0
+    dispersion_data_output.q = Q
+    dispersion_data_output.alpha = ALPHA
+    dispersion_data_output.lambda_ = LAMBDA
+    dispersion_data_output.d_lambda = DLAMBDA
+    dispersion_data_output.omega_log = OMEGALOG
+
+    return CHI0, S, Q, D1, IMS, EBX, EBY, EBDX, EBDY, LAMBDA, DLAMBDA, OMEGALOG, dispersion_data_output
 
 
 def dispersion_output(params: dict, KT: np.float64, eraw: np.array, Y1: np.array, DY1: np.float64, A: np.array,
-                      A1: np.float64, A2: np.float64) -> Tuple[np.array, np.array, np.array, np.array, np.float64]:
+                      A1: np.float64, A2: np.float64) -> Tuple[np.array, np.array, np.array, np.array, np.array,
+                      np.array]:
     """
     Processes dispersion data and computes renormalized momentum values.
 
@@ -205,8 +223,8 @@ def dispersion_output(params: dict, KT: np.float64, eraw: np.array, Y1: np.array
             - KERN (np.ndarray): Kernel matrix constructed from scaled energy and model.
             - D1 (np.ndarray): Model-transformed energy shift.
             - K (np.ndarray): Renormalized momentum values.
-            - IMS (float): Imaginary part of self-energy at the last energy point.
-
+            - IMS (np.array): Imaginary part of self-energy at the last energy point.
+            - FWHM (np.array): photoemission FWHM
     Raises:
         KeyError: If required keys ('NDRAW', 'NA') are missing from `params`.
         ValueError: If inputs have incompatible dimensions or invalid types.
@@ -215,9 +233,12 @@ def dispersion_output(params: dict, KT: np.float64, eraw: np.array, Y1: np.array
     KERN = setup_kernel(params["NDRAW"], params["NA"], eraw, Y1, DY1)
     D1 = KERN @ A
     K = np.zeros(params["NDRAW"])
+    IMS = np.zeros(params["NDRAW"],)
+    FWHM = np.zeros(params["NDRAW"], )
     for i in range(params["NDRAW"]):
         E0 = - (eraw[i] + D1[i]) * KT
         denominator = np.abs(A1) + np.sqrt(A1 ** 2 + 4.0 * A2 * E0)
         K[i] = 2.0 * E0 / denominator * np.sign(A1)
-        IMS = IMSIGMA(params["NA"], eraw[i], A, Y1, DY1)
-    return eraw, KERN, D1, K, IMS
+        IMS[i] = IMSIGMA(params["NA"], eraw[i], A, Y1, DY1)
+        FWHM[i] = 2 * IMS[i] * KT / np.abs(A1+2*A2*K[i])
+    return eraw, KERN, D1, K, IMS, FWHM
